@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工银薪e安 · 发薪日现金流管理助手</title>
+<script>
+/* 这一段只做一件事：万一下面的主脚本没能运行，在页面顶部给出可读提示。 */
+window.onerror=function(msg,src,line){
+  var d=document.documentElement; if(d) d.className='';
+  var b=document.getElementById('jswarn'); if(b) b.style.display='block';
+  var e=document.getElementById('jswerr');
+  if(e) e.innerHTML='脚本报错原文：<b>'+msg+'</b>'+(line?'（第 '+line+' 行）':'');
+  return false;
+};
+</script>
+<style>
+  :root{
+    --icbc:#C7000B; --icbc-d:#A30009;
+    --ink:#1f2329; --sub:#6b7280; --line:#e5e7eb;
+    --bg:#f2f3f5; --card:#ffffff;
+    --blue:#2E5C8A; --gold:#B98A2F; --green:#2F7D5B; --red:#C00000;
+    --blue-bg:#EAF1F8; --gold-bg:#F8F1E3; --green-bg:#E9F4EE; --red-bg:#FBECEC;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei","Segoe UI",sans-serif;
+    background:var(--bg); color:var(--ink); display:flex; flex-direction:column;
+  }
+  /* ---------- 顶栏 ---------- */
+  header{
+    display:flex; align-items:center; gap:14px; padding:10px 22px;
+    background:var(--card); border-bottom:1px solid var(--line); flex:none;
+  }
+  .logo{
+    width:34px;height:34px;border-radius:9px;background:var(--icbc);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;
+  }
+  .ttl{font-size:17px;font-weight:700;}
+  .ttl small{display:block;font-size:11px;color:var(--sub);font-weight:400;margin-top:1px;}
+  .badges{display:flex;gap:8px;margin-left:8px;}
+  .badge{
+    font-size:11px;color:var(--green);background:var(--green-bg);
+    border:1px solid #cfe6d9;border-radius:20px;padding:3px 10px;white-space:nowrap;
+  }
+  .badge.red{color:var(--icbc);background:var(--red-bg);border-color:#f0c9c9;}
+  .spacer{flex:1;}
+  .toggle{
+    font-size:12px;border:1px solid var(--line);background:#fff;border-radius:8px;
+    padding:6px 12px;cursor:pointer;color:var(--ink);
+  }
+  .toggle.on{background:var(--ink);color:#fff;border-color:var(--ink);}
+  /* ---------- 主体双栏 ---------- */
+  main{flex:1;display:flex;gap:22px;padding:20px 22px;min-height:0;justify-content:center;}
+  .stage-col{display:flex;flex-direction:column;align-items:center;gap:10px;}
+  .caption{
+    font-size:12.5px;color:var(--sub);background:#fff;border:1px solid var(--line);
+    border-radius:8px;padding:7px 14px;max-width:420px;text-align:center;line-height:1.5;
+  }
+  .caption b{color:var(--icbc);}
+  /* ---------- 手机框 ---------- */
+  .phone{
+    width:392px;height:760px;background:#fff;border-radius:34px;flex:none;
+    border:1px solid #d9dce1;box-shadow:0 14px 40px rgba(20,24,40,.14);
+    display:flex;flex-direction:column;overflow:hidden;position:relative;
+  }
+  .statusbar{
+    flex:none;display:flex;justify-content:space-between;align-items:center;
+    padding:10px 20px 6px;font-size:11px;color:var(--sub);
+  }
+  .screen{flex:1;overflow-y:auto;padding:6px 18px 14px;display:none;}
+  .screen.show{display:block;}
+  .phone-foot{
+    flex:none;text-align:center;font-size:10px;color:#9aa0a8;padding:7px 0 10px;
+    border-top:1px dashed var(--line);background:#fbfbfd;
+  }
+  /* ---------- 通用组件 ---------- */
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;}
+  .btn{
+    display:block;width:100%;border:none;border-radius:12px;padding:13px 0;
+    font-size:15px;font-weight:700;cursor:pointer;background:var(--icbc);color:#fff;
+  }
+  .btn:active{background:var(--icbc-d);}
+  .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line);font-weight:500;}
+  .btn.sub{background:#3a3f47;font-weight:500;}
+  .btn:disabled{background:#d5d8dd;cursor:default;}
+  h2.scr{font-size:19px;margin:8px 0 2px;}
+  .scr-sub{font-size:12.5px;color:var(--sub);margin-bottom:12px;line-height:1.6;}
+  .money{font-variant-numeric:tabular-nums;}
+  /* 首页 */
+  .hero{padding:26px 6px 10px;text-align:center;}
+  .hero .app-ic{
+    width:64px;height:64px;border-radius:18px;background:var(--icbc);color:#fff;margin:0 auto 12px;
+    display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;
+  }
+  .hero h1{font-size:22px;margin-bottom:6px;}
+  .hero p{font-size:13px;color:var(--sub);line-height:1.7;}
+  .feat{display:flex;flex-direction:column;gap:9px;margin:16px 0;}
+  .feat .row{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;line-height:1.5;color:var(--ink);}
+  .feat .dot{flex:none;width:22px;height:22px;border-radius:7px;background:var(--red-bg);color:var(--icbc);
+    display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;}
+  /* 三池卡片 */
+  .pool{border-radius:14px;padding:13px 14px;margin-bottom:10px;border:1px solid var(--line);}
+  .pool .ph{display:flex;justify-content:space-between;align-items:baseline;}
+  .pool .pn{font-size:14px;font-weight:700;display:flex;align-items:center;gap:7px;}
+  .pool .pd{font-size:11px;color:var(--sub);margin-top:4px;line-height:1.55;}
+  .pool .amt{font-size:19px;font-weight:800;}
+  .sw{width:11px;height:11px;border-radius:3.5px;display:inline-block;}
+  .pool.rigid{background:var(--blue-bg);border-color:#cfdfee;} .pool.rigid .amt{color:var(--blue);}
+  .pool.buffer{background:var(--gold-bg);border-color:#eadfc4;} .pool.buffer .amt{color:var(--gold);}
+  .pool.flex{background:var(--green-bg);border-color:#cfe6d9;} .pool.flex .amt{color:var(--green);}
+  /* 现金流健康度 */
+  .health{display:flex;gap:13px;align-items:center;border:1px solid var(--line);border-radius:14px;
+    padding:11px 14px;margin:2px 0 10px;background:#fff;}
+  .health .gauge{flex:none;width:96px;text-align:center;}
+  .health .gtxt{font-size:10.5px;color:var(--sub);margin-top:1px;}
+  .health .hbody{flex:1;min-width:0;}
+  .health .ht{font-size:13px;font-weight:700;margin-bottom:5px;}
+  .health .hlist{font-size:11px;color:var(--sub);line-height:1.62;}
+  .health .hlist .minus{color:var(--red);font-weight:700;margin-left:4px;}
+  .health .hlist .ok{color:var(--green);margin-left:4px;}
+  /* 滑块 */
+  .slider-box{margin:6px 0 4px;}
+  input[type=range]{width:100%;accent-color:var(--icbc);}
+  .slider-lab{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);}
+  .why{font-size:12px;color:var(--sub);background:#f7f8fa;border-radius:10px;padding:10px 12px;line-height:1.7;margin-top:10px;}
+  .why b{color:var(--ink);}
+  /* M2 图 */
+  .chips{display:flex;gap:8px;margin:10px 0;}
+  .chip{flex:1;border-radius:10px;padding:8px 10px;font-size:11px;border:1px solid var(--line);background:#fff;}
+  .chip b{display:block;font-size:15px;margin-top:2px;}
+  .chip.warn{border-color:#f0c9c9;background:var(--red-bg);}
+  .daybar{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--sub);margin:8px 0 4px;}
+  .speed{display:flex;gap:6px;}
+  .speed button{border:1px solid var(--line);background:#fff;border-radius:7px;font-size:11px;padding:3px 9px;cursor:pointer;}
+  .speed button.cur{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .evtlog{font-size:11.5px;color:var(--sub);line-height:1.8;max-height:92px;overflow-y:auto;overflow-x:hidden;
+    word-break:break-word;margin-top:8px;background:#f7f8fa;border-radius:10px;padding:8px 11px;}
+  .evtlog .neg{color:var(--red);} .evtlog .pos{color:var(--green);} .evtlog .fix{color:var(--blue);}
+  /* M4 弹窗 */
+  .mask{position:absolute;inset:0;background:rgba(20,24,40,.45);display:none;align-items:flex-end;z-index:5;}
+  .mask.show{display:flex;}
+  .sheet{background:#fff;border-radius:20px 20px 0 0;padding:18px 18px 22px;width:100%;animation:up .25s ease;}
+  @keyframes up{from{transform:translateY(40px);opacity:.4;}to{transform:none;opacity:1;}}
+  .sheet h3{font-size:16px;margin-bottom:4px;}
+  .sheet .warn-line{font-size:12.5px;color:var(--red);background:var(--red-bg);border-radius:9px;padding:8px 11px;margin:8px 0 12px;line-height:1.6;}
+  .opt{border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:9px;cursor:pointer;}
+  .opt:hover{border-color:var(--icbc);}
+  .opt .t{font-size:14px;font-weight:700;}
+  .opt .d{font-size:11.5px;color:var(--sub);margin-top:3px;line-height:1.55;}
+  .opt.rec{border-color:var(--icbc);background:#fff7f7;}
+  .opt .tag{font-size:10px;color:#fff;background:var(--icbc);border-radius:5px;padding:1px 6px;margin-left:6px;font-weight:500;}
+  /* 复盘 */
+  .review p{font-size:13px;line-height:1.85;margin-bottom:11px;}
+  .review p b{color:var(--icbc);}
+  .review .src{font-size:10.5px;color:#9aa0a8;margin-top:4px;line-height:1.6;}
+  /* 总结 */
+  .sum-hero{text-align:center;padding:18px 0 6px;}
+  .sum-hero .big{font-size:26px;font-weight:800;color:var(--icbc);}
+  .kpi{display:flex;gap:8px;margin:12px 0;}
+  .kpi .k{flex:1;background:#f7f8fa;border-radius:11px;padding:10px 6px;text-align:center;}
+  .kpi .k b{display:block;font-size:17px;}
+  .kpi .k span{font-size:10.5px;color:var(--sub);}
+  /* ---------- 评委看板 ---------- */
+  .panel{width:350px;flex:none;display:flex;flex-direction:column;gap:12px;overflow-y:auto;padding-bottom:6px;}
+  body.no-panel .panel{display:none;}
+  .pcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 15px;}
+  .pcard h4{font-size:12.5px;color:var(--sub);font-weight:600;margin-bottom:9px;letter-spacing:.5px;}
+  .loop{display:flex;align-items:center;gap:4px;flex-wrap:wrap;font-size:11.5px;}
+  .loop .st{border:1px solid var(--line);border-radius:8px;padding:5px 8px;background:#fff;color:var(--sub);white-space:nowrap;}
+  .loop .st.cur{background:var(--icbc);border-color:var(--icbc);color:#fff;font-weight:700;}
+  .loop .ar{color:#b6bac1;}
+  .loop .calib{border:1px dashed var(--gold);color:var(--gold);border-radius:8px;padding:5px 8px;background:#fff;}
+  .loop .calib.cur{background:var(--gold);color:#fff;border-style:solid;font-weight:700;}
+  .bar-row{display:flex;align-items:center;gap:8px;font-size:11.5px;margin-bottom:7px;}
+  .bar-row .nm{width:60px;color:var(--sub);flex:none;}
+  .bar-track{flex:1;height:10px;background:#f0f1f4;border-radius:6px;overflow:hidden;}
+  .bar-fill{height:100%;border-radius:6px;transition:width .3s;}
+  .bar-row .vl{width:64px;text-align:right;flex:none;font-variant-numeric:tabular-nums;}
+  .kv{display:flex;justify-content:space-between;font-size:12.5px;padding:5px 0;border-bottom:1px dashed #f0f1f4;}
+  .kv:last-child{border-bottom:none;}
+  .kv .k{color:var(--sub);} .kv .v{font-weight:700;font-variant-numeric:tabular-nums;}
+  .sig-dots{display:flex;gap:10px;align-items:center;padding-top:4px;}
+  .sig-dots .sd{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;color:var(--sub);}
+  .sdot{width:16px;height:16px;border-radius:50%;background:#e8eaee;border:1px solid var(--line);}
+  .sdot.s1{background:var(--red);border-color:var(--red);}
+  .sdot.s0{background:var(--green);border-color:var(--green);}
+  .note{font-size:10.5px;color:#9aa0a8;line-height:1.6;margin-top:7px;}
+  /* 模式卡 */
+  .mode-row{display:flex;gap:10px;margin:14px 0 4px;}
+  .mode-card{flex:1;border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;background:#fff;}
+  .mode-card b{display:block;font-size:13.5px;margin-bottom:3px;}
+  .mode-card span{font-size:11px;color:var(--sub);line-height:1.5;display:block;}
+  .mode-card.cur{border-color:var(--icbc);background:#fff7f7;box-shadow:0 0 0 1px var(--icbc) inset;}
+  /* 护栏体验 */
+  .guard-box{margin-top:12px;border:1px dashed #d9b3b3;background:#fffdfd;border-radius:12px;padding:12px;}
+  .g-ttl{font-size:13px;font-weight:700;}
+  .g-sub{font-size:11px;color:var(--sub);margin:4px 0 8px;line-height:1.5;}
+  .g-row{display:flex;gap:8px;}
+  .g-row input{flex:1;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:12.5px;}
+  .g-row button{border:none;background:var(--ink);color:#fff;border-radius:9px;padding:0 14px;font-size:12.5px;cursor:pointer;}
+  .g-result{font-size:12px;margin-top:8px;line-height:1.6;display:none;}
+  .g-result.block{display:block;color:var(--red);background:var(--red-bg);border-radius:8px;padding:8px 10px;}
+  .g-result.pass{display:block;color:var(--green);background:var(--green-bg);border-radius:8px;padding:8px 10px;}
+  .g-presets{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px;}
+  .g-presets .lb{font-size:10.5px;color:#9aa0a8;}
+  .g-presets button{border:1px solid var(--line);background:#fff;border-radius:14px;padding:4px 10px;
+    font-size:11px;color:var(--sub);cursor:pointer;font-family:inherit;line-height:1.4;}
+  .g-presets button:hover{border-color:var(--icbc);color:var(--icbc);}
+  /* ---------- 使用说明弹层 ---------- */
+  .manual-mask{
+    position:fixed;inset:0;background:rgba(20,24,40,.55);display:none;z-index:60;
+    align-items:center;justify-content:center;padding:26px;
+  }
+  .manual-mask.show{display:flex;}
+  .manual{
+    background:#fff;border-radius:18px;width:880px;max-width:96vw;height:88vh;
+    display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 60px rgba(20,24,40,.35);
+    animation:up .25s ease;
+  }
+  .manual-head{
+    flex:none;display:flex;align-items:center;gap:10px;padding:14px 22px;
+    border-bottom:1px solid var(--line);background:#fbfbfd;
+  }
+  .manual-head .mt{font-size:16px;font-weight:800;}
+  .manual-head .ms{font-size:11.5px;color:var(--sub);}
+  .manual-nav{flex:none;display:flex;gap:6px;flex-wrap:wrap;padding:10px 22px;border-bottom:1px solid var(--line);}
+  .manual-nav a{
+    font-size:11.5px;color:var(--sub);text-decoration:none;border:1px solid var(--line);
+    border-radius:16px;padding:3px 11px;background:#fff;cursor:pointer;
+  }
+  .manual-nav a:hover{color:var(--icbc);border-color:var(--icbc);}
+  .manual-body{flex:1;overflow-y:auto;padding:18px 26px 30px;line-height:1.75;font-size:13px;}
+  .manual-body h3{
+    font-size:15px;margin:22px 0 8px;padding-top:14px;border-top:1px dashed var(--line);color:var(--icbc);
+  }
+  .manual-body h3:first-child{margin-top:0;padding-top:0;border-top:none;}
+  .manual-body p{margin-bottom:8px;color:var(--ink);}
+  .manual-body ul,.manual-body ol{margin:4px 0 10px 20px;color:var(--ink);}
+  .manual-body li{margin-bottom:4px;}
+  .manual-body b{color:var(--icbc);}
+  .manual-body table{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0 12px;}
+  .manual-body th{background:#f7f8fa;text-align:left;}
+  .manual-body th,.manual-body td{border:1px solid var(--line);padding:6px 10px;vertical-align:top;line-height:1.6;}
+  .manual-body .warn{
+    background:var(--red-bg);border:1px solid #f0c9c9;border-radius:10px;
+    padding:10px 13px;font-size:12.5px;color:var(--red);margin:8px 0 12px;line-height:1.7;
+  }
+  .manual-body .tip{
+    background:var(--blue-bg);border:1px solid #cfdfee;border-radius:10px;
+    padding:10px 13px;font-size:12.5px;color:var(--blue);margin:8px 0 12px;line-height:1.7;
+  }
+  .manual-body .glos{font-size:12.5px;}
+  .manual-body .glos b{color:var(--ink);}
+  .manual-close{
+    border:none;background:var(--ink);color:#fff;border-radius:9px;padding:7px 16px;
+    font-size:12.5px;cursor:pointer;flex:none;
+  }
+  /* ---------- 自定义模式：情况填写与 AI 建议 ---------- */
+  .frm .f-lab{font-size:12px;font-weight:700;margin:11px 0 5px;}
+  .frm .f-lab span{font-weight:400;color:var(--sub);font-size:11px;}
+  .frm input[type=number],.frm select{width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 10px;font-size:13px;background:#fff;}
+  .cu-item{display:flex;gap:6px;margin-bottom:6px;align-items:center;}
+  .cu-item input{border:1px solid var(--line);border-radius:8px;padding:7px 8px;font-size:12px;min-width:0;}
+  .cu-item .nm{flex:1.5;} .cu-item .am{flex:1;} .cu-item .dy{flex:.75;}
+  .cu-item .del{flex:none;border:none;background:#f2f3f5;color:var(--sub);border-radius:7px;width:27px;height:27px;cursor:pointer;font-size:13px;}
+  .cu-add{border:1px dashed var(--line);background:#fff;border-radius:9px;width:100%;padding:7px;font-size:12px;color:var(--sub);cursor:pointer;}
+  .f-opt{border:1px solid var(--line);border-radius:10px;margin-top:12px;}
+  .f-opt summary{padding:9px 12px;font-size:12.5px;cursor:pointer;color:var(--sub);list-style:none;}
+  .f-opt summary:before{content:'▸ ';color:var(--icbc);}
+  .f-opt[open] summary:before{content:'▾ ';}
+  .f-opt .f-opt-body{padding:0 12px 10px;}
+  .cu-err{display:none;background:var(--red-bg);color:var(--red);border-radius:9px;padding:8px 11px;font-size:12px;margin-top:10px;line-height:1.6;}
+  .plan-card{display:none;margin-top:14px;border:1.5px solid var(--icbc);border-radius:14px;padding:13px 14px;background:#fffafa;}
+  .plan-card h4{font-size:13px;color:var(--icbc);margin-bottom:8px;}
+  .plan-line{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;border-bottom:1px dashed #f0e2e2;}
+  .plan-line:last-of-type{border-bottom:none;}
+  .plan-why{font-size:11.5px;color:var(--sub);line-height:1.7;margin-top:8px;background:#f7f8fa;border-radius:9px;padding:8px 10px;}
+  .plan-warn{font-size:11.5px;color:var(--red);margin-top:6px;line-height:1.6;}
+  /* toast */
+  .toast{
+    position:fixed;left:50%;top:64px;transform:translateX(-50%) translateY(-8px);
+    background:var(--ink);color:#fff;font-size:13px;border-radius:10px;padding:10px 18px;
+    opacity:0;transition:all .3s;z-index:99;pointer-events:none;max-width:520px;text-align:center;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast.gold{background:var(--gold);}
+  /* ---------- 交互脚本自检条（脚本没跑起来时才可见，正常打开第一眼就隐藏） ---------- */
+  #jswarn{
+    display:block;flex:none;padding:12px 22px;background:var(--red-bg);color:var(--red);
+    border-bottom:1px solid #f0c9c9;font-size:12.5px;line-height:1.75;
+  }
+  #jswarn b{font-size:13.5px;}
+  #jswarn ol{margin:6px 0 0 20px;}
+  #jswarn li{margin-bottom:3px;}
+  #jswarn code{background:#fff;border:1px solid #f0c9c9;border-radius:4px;padding:1px 5px;font-size:12px;}
+  #jswerr{display:block;margin-top:6px;}
+  html.js-ok #jswarn{display:none;}
+</style>
+</head>
+<body>
+
+<!-- 自检提示条：仅当交互脚本未运行时可见；正常情况下页面加载完会被立即收起，不影响观感 -->
+<div id="jswarn">
+  <b>⚠ 页面未能正常启动</b>　请用 <code>Google Chrome</code> 或 <code>Microsoft Edge</code> 打开本文件；
+  若该文件是被 WPS / Word 等程序打开的，请在文件上右键 →「打开方式」→ 选择浏览器。
+  <noscript>本页需要启用 JavaScript 才能运行。</noscript>
+  <span id="jswerr"></span>
+</div>
+
+<header>
+  <div class="logo">薪</div>
+  <div class="ttl">工银薪e安<small>基于发薪日现金流预测的青年财务管理助手</small></div>
+  <div class="badges">
+    <span class="badge">✓ 离线运行</span>
+    <span class="badge">✓ 数据不出本机</span>
+    <span class="badge">✓ 无外部 API</span>
+    <span class="badge red">单文件 · 双击即用</span>
+  </div>
+  <div class="spacer"></div>
+  <button class="toggle" id="manualBtn" onclick="openManual()">📖 使用说明</button>
+  <button class="toggle on" id="panelToggle" onclick="togglePanel()">评委视角：开</button>
+</header>
+
+<main>
+  <!-- 左：手机 -->
+  <div class="stage-col">
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span>工银薪e安</span><span>●●●</span></div>
+
+      <!-- 首页 -->
+      <div class="screen show" id="scr-home">
+        <div class="hero">
+          <div class="app-ic">薪</div>
+          <h1>工银薪e安</h1>
+          <p id="hero-sub">发工资的那天，钱就已经各就各位。<br>演示用户：小周 · 毕业 2 年 · 月薪 ¥8,000 · 每月 10 日发薪</p>
+        </div>
+        <div class="mode-row">
+          <div class="mode-card cur" id="mode-story" onclick="setMode('story')">
+            <b>讲解模式</b><span>脚本化用户「小周」，四周期完整故事，适合路演讲解</span>
+          </div>
+          <div class="mode-card" id="mode-real" onclick="setMode('real')">
+            <b>合成用户模式</b><span>真实回放生成器用户 U0061 的 4 个发薪窗口流水（seed=20260926）</span>
+          </div>
+        </div>
+        <div class="mode-card" id="mode-custom" onclick="setMode('custom')" style="margin-top:8px;border-style:dashed;">
+          <b>✦ 自定义模式 · 用你自己的情况</b><span>输入月薪、发薪日与固定账单，AI 现场为你规划三池分账。信息只在你本机内存中计算，不上传、不留存</span>
+        </div>
+        <div class="feat">
+          <div class="row"><div class="dot">1</div><div><b>发薪日分账</b>　到账当天自动划入刚性支出池、缓冲池、灵活池</div></div>
+          <div class="row"><div class="dot">2</div><div><b>现金流日历</b>　未来 30 天余额区间预测，紧绷日提前标红</div></div>
+          <div class="row"><div class="dot">3</div><div><b>缓冲与解冻</b>　应急三选一，你的每次解冻都在教系统更懂你</div></div>
+          <div class="row"><div class="dot">4</div><div><b>周期复盘</b>　四个周期走完，看预测如何越用越准</div></div>
+        </div>
+        <button class="btn" id="start-btn" onclick="enterCycle()">开始体验 · 第 1 个发薪周期</button>
+        <div class="guard-box">
+          <div class="g-ttl">🛡 护栏层体验 · 推送文案合规自检</div>
+          <div class="g-sub">所有对外文案必须过护栏层（规则引擎，非 AI）。输入一句话试试：</div>
+          <div class="g-row">
+            <input id="guard-input" type="text" placeholder="例如：这个理财稳赚不赔，快来买">
+            <button onclick="guardCheck()">检测</button>
+          </div>
+          <div class="g-presets">
+            <span class="lb">点一下试试：</span>
+            <button onclick="guardPreset(this)">这个理财稳赚不赔，快来买</button>
+            <button onclick="guardPreset(this)">本产品保证收益、零风险</button>
+            <button onclick="guardPreset(this)">您的账户余额充足，可以放心消费</button>
+          </div>
+          <div class="g-result" id="guard-result"></div>
+        </div>
+        <div class="why" style="margin-top:12px;">
+          本产品为单文件离线页面：<b>所有计算在你本机浏览器内完成</b>，
+          不联网、不上传、不调用任何外部服务——这正是产品"数据不出域"承诺的演示形态。
+        </div>
+      </div>
+
+      <!-- 自定义模式：情况填写 + AI 冷启动建议 -->
+      <div class="screen" id="scr-setup">
+        <h2 class="scr">告诉我你的情况</h2>
+        <div class="scr-sub">只需 1 分钟。信息只在你本机浏览器内计算，<b>不上传、不留存</b>——关掉页面即消失。</div>
+        <div class="frm">
+          <div class="f-lab">月薪（税后到手，元）<span>　必填</span></div>
+          <input type="number" id="cu-income" value="8000" min="1000" max="1000000">
+          <div class="f-lab">每月发薪日<span>　必填（1–28 日）</span></div>
+          <select id="cu-payday"></select>
+          <div class="f-lab">固定支出（房租 / 车贷 / 订阅等）<span>　必填，可增删</span></div>
+          <div id="cu-items"></div>
+          <button class="cu-add" onclick="cuAddItem()">＋ 添加一项固定支出</button>
+          <details class="f-opt">
+            <summary>让规划更准（选填 · 2 项）</summary>
+            <div class="f-opt-body">
+              <div class="f-lab">你的消费习惯更接近</div>
+              <select id="cu-type">
+                <option value="jian">节俭型：非必要不花</option>
+                <option value="jun" selected>均衡型：有节制，也会享受</option>
+                <option value="xiang">享受型：容易月光</option>
+              </select>
+              <div class="f-lab">每月想强制攒下的钱（元，可留空）</div>
+              <input type="number" id="cu-savings" placeholder="例如 1000" min="0">
+            </div>
+          </details>
+          <div class="cu-err" id="cu-err"></div>
+          <button class="btn" style="margin-top:14px;" onclick="genPlan()">生成我的分账方案 →</button>
+          <div class="plan-card" id="plan-card">
+            <h4>✦ AI 冷启动建议</h4>
+            <div class="plan-line"><span>刚性支出池（按你填的账单）</span><b id="pl-rigid" class="money"></b></div>
+            <div class="plan-line"><span>缓冲池建议比例</span><b id="pl-ratio" class="money"></b></div>
+            <div class="plan-line"><span>灵活池（本期可自由支配）</span><b id="pl-flex" class="money"></b></div>
+            <div class="plan-line"><span>日均预算</span><b id="pl-daily" class="money"></b></div>
+            <div class="plan-why" id="pl-why"></div>
+            <div class="plan-warn" id="pl-warn"></div>
+            <button class="btn" style="margin-top:12px;" onclick="applyPlan()">采用方案 · 进入第 1 个发薪周期</button>
+          </div>
+          <div class="why" style="margin-top:12px;">概念演示说明：此处的"AI 建议"为<b>透明启发式规则</b>（推理过程完全可见）；正式版由 L1 预测层模型给出，输入特征正是本页这些字段。</div>
+        </div>
+      </div>
+
+      <!-- M1 分账 -->
+      <div class="screen" id="scr-m1">
+        <h2 class="scr">发薪日 · 自动分账</h2>
+        <div class="scr-sub" id="m1-date">第 1 周期 · 工资已到账 ¥8,000（每月 10 日）</div>
+
+        <div class="pool rigid">
+          <div class="ph"><span class="pn"><span class="sw" style="background:var(--blue)"></span>刚性支出池</span>
+            <span class="amt money" id="p-rigid">¥3,300</span></div>
+          <div class="pd" id="p-rigid-detail">账单识别：房租 ¥2,400（1 日）· 车贷还款 ¥800（15 日）· 订阅 ¥199（5 日）· 通勤话费 ¥300（8 日）</div>
+        </div>
+        <div class="pool buffer">
+          <div class="ph"><span class="pn"><span class="sw" style="background:var(--gold)"></span>缓冲池</span>
+            <span class="amt money" id="p-buffer">¥710</span></div>
+          <div class="pd" id="p-buffer-why">应急备用，默认占可支配收入的 15%</div>
+        </div>
+        <div class="pool flex">
+          <div class="ph"><span class="pn"><span class="sw" style="background:var(--green)"></span>灵活池</span>
+            <span class="amt money" id="p-flex">¥3,990</span></div>
+          <div class="pd">本期可自由支配，约 <span id="p-daily">¥133</span>/天</div>
+        </div>
+
+        <div class="health" id="health-card">
+          <div class="gauge">
+            <svg id="health-gauge" width="96" height="60" style="display:block"></svg>
+            <div class="gtxt">现金流健康度</div>
+          </div>
+          <div class="hbody">
+            <div class="ht" id="health-verdict">—</div>
+            <div class="hlist" id="health-list"></div>
+          </div>
+        </div>
+
+        <div class="slider-box">
+          <input type="range" id="ratioSlider" min="5" max="25" step="1" value="15" oninput="onSlider(this.value)">
+          <div class="slider-lab"><span>缓冲 5%</span><span id="ratioLab" style="color:var(--icbc);font-weight:700;">15%</span><span>25%</span></div>
+        </div>
+        <div class="why" id="m1-why">
+          <b>为什么是这个数？</b>刚性支出 ¥3,300 由本行账单记录识别，系统不参与估计；
+          缓冲比例由<b>校准层</b>根据你历史动用情况给出（首周期无记录，取默认值）。
+        </div>
+        <div style="height:12px"></div>
+        <button class="btn" onclick="confirmM1()">确认分账，查看现金流日历 →</button>
+      </div>
+
+      <!-- M2 日历 -->
+      <div class="screen" id="scr-m2">
+        <h2 class="scr">现金流日历</h2>
+        <div class="scr-sub">本发薪周期余额（实线）与预测区间（阴影），紧绷日将提前标红</div>
+        <svg id="chart" width="356" height="190" style="display:block;background:#fff;border:1px solid var(--line);border-radius:12px;"></svg>
+        <div class="chips">
+          <div class="chip">灵活池剩余<b class="money" id="c-flex" style="color:var(--green)">—</b></div>
+          <div class="chip">缓冲池剩余<b class="money" id="c-buffer" style="color:var(--gold)">—</b></div>
+          <div class="chip">账户余额<b class="money" id="c-bal" style="color:var(--blue)">—</b></div>
+        </div>
+        <div class="daybar">
+          <span id="dayLab">发薪日 · 第 0 / 30 天</span>
+          <span class="speed">
+            <button onclick="setSpeed(1)" id="sp1" class="cur">1×</button>
+            <button onclick="setSpeed(2)" id="sp2">2×</button>
+            <button onclick="setSpeed(4)" id="sp4">4×</button>
+          </span>
+        </div>
+        <div class="evtlog" id="evtlog"></div>
+      </div>
+
+      <!-- M3 复盘 -->
+      <div class="screen" id="scr-m3">
+        <h2 class="scr" id="m3-ttl">第 1 周期复盘</h2>
+        <div class="scr-sub">四段式周期总结 · 数值由本期流水统计生成</div>
+        <div class="review card" id="review-body"></div>
+        <button class="btn" id="m3-btn" onclick="nextCycle()">进入下一周期 →</button>
+        <div style="height:8px"></div>
+        <button class="btn ghost" onclick="showScreen('scr-final');renderFinal();">直接查看四周期总结</button>
+      </div>
+
+      <!-- 总结 -->
+      <div class="screen" id="scr-final">
+        <h2 class="scr">四个周期之后</h2>
+        <div class="scr-sub">校准闭环让预测随周期收敛，而非追求单次精度</div>
+        <div class="sum-hero"><div class="big" id="final-mape">—</div>
+          <div style="font-size:12px;color:var(--sub)">合成数据回放下的余额预测 MAPE（非精度承诺）</div></div>
+        <div class="kpi" id="final-kpi"></div>
+        <div class="review card" id="final-body"></div>
+        <button class="btn" onclick="restartAll()">重新体验</button>
+      </div>
+
+      <!-- M4 弹层 -->
+      <div class="mask" id="m4-mask">
+        <div class="sheet">
+          <h3 id="m4-ttl">⚠ 紧绷日预警</h3>
+          <div class="warn-line" id="m4-warn"></div>
+          <div class="opt rec" onclick="m4Choose(1)">
+            <div class="t">动用缓冲池 ¥<span id="m4-amt">0</span><span class="tag">推荐</span></div>
+            <div class="d">从缓冲池划入灵活池应急。<b>这次动用会作为校准信号</b>，帮助系统在下周期为你留出更合适的缓冲。</div>
+          </div>
+          <div class="opt" id="m4-opt2" onclick="m4Choose(2)">
+            <div class="t">压缩后续预算</div>
+            <div class="d">不动缓冲池，本期剩余天数的日均预算下调约 25%，自己扛过去。</div>
+          </div>
+          <div class="opt" onclick="m4Choose(3)">
+            <div class="t">继续观察</div>
+            <div class="d">暂不处理。若灵活池透支，将标记为"断档"并影响本期复盘评级。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="phone-foot">所有计算均在本机完成 · 未发起任何网络请求</div>
+    </div>
+    <div class="caption" id="caption"><b>开场</b>　产品入口页：强调"离线运行、数据不出本机"。</div>
+  </div>
+
+  <!-- 右：评委看板 -->
+  <div class="panel" id="panel">
+    <div class="pcard">
+      <h4>闭环 · 四模块一校准</h4>
+      <div class="loop">
+        <span class="st" id="st1">M1 分账</span><span class="ar">→</span>
+        <span class="st" id="st2">M2 日历</span><span class="ar">→</span>
+        <span class="st" id="st4">M4 解冻</span><span class="ar">→</span>
+        <span class="st" id="st3">M3 复盘</span><span class="ar">→</span>
+        <span class="calib" id="st5">校准层</span><span class="ar">↺</span>
+      </div>
+      <div class="note">解冻动作 → 校准信号 → 下周期分账参数，构成"预测—观测—校准"闭环（方案核心）。</div>
+    </div>
+
+    <div class="pcard">
+      <h4 id="pool-ttl">三池实时状态（占月薪 ¥8,000）</h4>
+      <div class="bar-row"><span class="nm">刚性支出</span><div class="bar-track"><div class="bar-fill" id="bar-r" style="background:var(--blue);width:41%"></div></div><span class="vl money" id="bar-r-v">3,300</span></div>
+      <div class="bar-row"><span class="nm">缓冲池</span><div class="bar-track"><div class="bar-fill" id="bar-b" style="background:var(--gold);width:9%"></div></div><span class="vl money" id="bar-b-v">710</span></div>
+      <div class="bar-row"><span class="nm">灵活池</span><div class="bar-track"><div class="bar-fill" id="bar-f" style="background:var(--green);width:50%"></div></div><span class="vl money" id="bar-f-v">3,990</span></div>
+    </div>
+
+    <div class="pcard">
+      <h4>校准层参数（基于隐式反馈的在线校准）</h4>
+      <div class="kv"><span class="k">当前周期</span><span class="v" id="kv-cycle">1 / 4</span></div>
+      <div class="kv"><span class="k">缓冲池比例（校准输出）</span><span class="v" id="kv-ratio">15.0%</span></div>
+      <div class="kv"><span class="k">校准步长 η（逐周期衰减）</span><span class="v" id="kv-eta">0.050</span></div>
+      <div class="kv"><span class="k">本周期解冻信号</span><span class="v" id="kv-sig">—</span></div>
+      <div class="sig-dots" id="sig-dots"></div>
+      <div class="note">规则（对齐仿真 params.json）：动用缓冲 → 判定"预测偏紧"，支出估计上调 η；未动用 → 下调 0.3×η（宁紧勿松）；η 每周期 ×0.9 衰减，保证收敛。</div>
+    </div>
+
+    <div class="pcard">
+      <h4>余额预测 MAPE 收敛曲线</h4>
+      <svg id="mape-chart" width="316" height="150" style="display:block;"></svg>
+      <div class="note">合成数据回放结果，验证收敛方向，非精度承诺。第 2 周期的大幅下降对应解冻信号首次参与校准。</div>
+    </div>
+  </div>
+</main>
+
+<!-- ================= 使用说明弹层（老师建议：说明书内嵌，免切换） ================= -->
+<div class="manual-mask" id="manual-mask" onclick="if(event.target===this)closeManual()">
+  <div class="manual">
+    <div class="manual-head">
+      <div class="logo" style="width:28px;height:28px;font-size:13px;border-radius:8px;">薪</div>
+      <div>
+        <div class="mt">工银薪e安 · 使用说明书</div>
+        <div class="ms">看完这一页就会用 · 按 Esc 或点击遮罩关闭</div>
+      </div>
+      <div class="spacer"></div>
+      <button class="manual-close" onclick="closeManual()">关闭 ✕</button>
+    </div>
+    <div class="manual-nav">
+      <a onclick="manualGo('m-what')">① 这是什么</a>
+      <a onclick="manualGo('m-quick')">② 30 秒上手</a>
+      <a onclick="manualGo('m-ui')">③ 界面导览</a>
+      <a onclick="manualGo('m-flow')">④ 七步流程</a>
+      <a onclick="manualGo('m-core')">⑤ 紧绷日三选一</a>
+      <a onclick="manualGo('m-mode')">⑥ 三种模式</a>
+      <a onclick="manualGo('m-panel')">⑦ 评委看板</a>
+      <a onclick="manualGo('m-glos')">⑧ 名词解释</a>
+      <a onclick="manualGo('m-faq')">⑨ 常见问题</a>
+    </div>
+    <div class="manual-body" id="manual-body">
+
+      <h3 id="m-what">① 这是什么</h3>
+      <p><b>工银薪e安</b>是一款基于<b>发薪日现金流预测</b>的青年财务管理助手。每月工资到账当天，系统自动把月薪分进三个池子——<b>刚性支出池</b>（房租、车贷等必须付的）、<b>缓冲池</b>（应急备用）、<b>灵活池</b>（日常可花），并在接下来一个发薪周期里逐日跟踪余额、提前预警"紧绷日"。</p>
+      <p>它最独特的地方是「<b>解冻即校准</b>」：你每一次"动用缓冲池"的决定，都会被系统当作一次校准信号，让下一个周期的分账更贴合你的真实开销——<b>越用越准</b>。本产品是单文件离线页面：所有计算在你本机浏览器内完成，不联网、不上传，这正是产品"数据不出域"承诺的演示形态。</p>
+
+      <h3 id="m-quick">② 30 秒上手</h3>
+      <table>
+        <tr><th style="width:90px;">步骤</th><th>做什么</th></tr>
+        <tr><td>1. 打开</td><td>双击 <code>工银薪e安_demo.html</code>，用 Chrome / Edge 打开，<b>不需要联网、不需要安装任何东西</b></td></tr>
+        <tr><td>2. 选模式</td><td>首页三选一：<b>讲解模式</b>（剧本完整，推荐第一次用）、<b>合成用户模式</b>（真实仿真流水回放）或<b>自定义模式</b>（输入你自己的月薪与账单，AI 现场分账）</td></tr>
+        <tr><td>3. 点开始</td><td>点「开始体验」，跟着界面走完 4 个发薪周期（约 2 分钟），中途在紧绷日做一次选择</td></tr>
+      </table>
+      <div class="warn">⚠ <b>按钮点了没反应？</b>十有八九是文件被 WPS / Word 打开了（它们能显示页面但不执行脚本）。右键文件 →「打开方式」→ 选 Chrome 或 Edge 即可。360 / QQ 浏览器请切"极速模式"。</div>
+
+      <h3 id="m-ui">③ 界面导览</h3>
+      <ul>
+        <li><b>顶栏徽标</b>：✓ 离线运行 / ✓ 数据不出本机 / ✓ 无外部 API —— 隐私承诺直接亮在明处。</li>
+        <li><b>📖 使用说明</b>：就是你现在看的这个弹层，任何界面下都能打开。</li>
+        <li><b>评委视角开关</b>：显示 / 隐藏右侧看板。讲给用户听时关掉，讲给评委听时打开。</li>
+        <li><b>模式卡（首页）</b>：讲解 / 合成用户 / 自定义三种模式，点卡片切换；自定义模式会引导你填写月薪与账单。</li>
+        <li><b>护栏层体验（首页）</b>：输入一句推送文案，当场演示合规护栏拦截。不想打字就点下方的<b>预设文案</b>按钮，点一下自动填入并立即检测（绿=通过 / 红=拦截并列出命中词）。</li>
+        <li><b>现金流健康度（M1 分账页）</b>：半圆仪表盘给出 0–100 分，<b>80 以上绿 / 60–80 黄 / 60 以下红</b>；右侧逐条列出四个打分项各自的扣分理由（刚性占比、缓冲厚度、灵活池日均、历史断档），分数是算出来的，不是评出来的。</li>
+        <li><b>手机区（左侧）</b>：产品本体，所有操作都在这里完成。</li>
+        <li><b>字幕条（手机下方）</b>：一句话提示当前该看什么。</li>
+        <li><b>右栏看板</b>：给评委看的"算法后台"，详见第 ⑦ 节。</li>
+      </ul>
+
+      <h3 id="m-flow">④ 完整演示：七步走完一个闭环</h3>
+      <table>
+        <tr><th style="width:120px;">步骤</th><th>你做什么</th><th>看到什么 / 意义</th></tr>
+        <tr><td>1. 首页</td><td>选模式 →「开始体验」</td><td>先试护栏层体验：输入"稳赚不赔"会被当场拦截</td></tr>
+        <tr><td>2. M1 发薪日分账</td><td>看三池金额与<b>现金流健康度</b>评分，可拖滑块调缓冲比例 →「确认分账」</td><td>到账当天钱已各就各位；每笔钱都有"为什么是这个数"的解释，健康度会随滑块实时变化</td></tr>
+        <tr><td>3. M2 现金流日历</td><td>看余额曲线逐日推进，可 1×/2×/4× 快进</td><td>红实线=实际余额，蓝阴影=预测区间；下方流水逐笔滚动</td></tr>
+        <tr><td>4. M4 紧绷日预警</td><td>系统推算出缺口时自动弹窗，你在三个选项中做决定</td><td><b>核心交互</b>，详见第 ⑤ 节</td></tr>
+        <tr><td>5. M3 周期复盘</td><td>读四段式复盘 →「进入下一周期」</td><td>收支概况 / 波动归因 / 缓冲处置 / 本期校准结果</td></tr>
+        <tr><td>6. 第 2~4 周期</td><td>重复 2~5，感受分账逐期变化</td><td>缓冲比例随你的选择逐期微调</td></tr>
+        <tr><td>7. 四周期总结</td><td>看收敛总览</td><td>MAPE 33.70% → 26.02%，"越用越准"有据可查</td></tr>
+      </table>
+
+      <h3 id="m-core">⑤ 紧绷日三选一：本产品的核心</h3>
+      <p>当系统推算"本期剩余支出将超过灵活池余额"时，会提前弹窗给出三个<b>知情选项</b>——决定权始终在你手上，系统只给信息、替你算账：</p>
+      <table>
+        <tr><th style="width:150px;">选项</th><th>发生什么</th><th>对模型的意义</th></tr>
+        <tr><td>① 动用缓冲池</td><td>从缓冲池划转一笔钱补进灵活池，应急</td><td>生成"动用"信号 → 校准层判定预测<b>偏紧</b>，下周期缓冲比例上调 η</td></tr>
+        <tr><td>② 压缩后续预算</td><td>不动缓冲，剩余天数日均预算下调约 25%</td><td>信号为"未动用" → 下周期缓冲比例小幅下调（0.3×η）</td></tr>
+        <tr><td>③ 继续观察</td><td>暂不处理，系统继续监测</td><td>若最终透支（断档），同样记为"动用"信号</td></tr>
+      </table>
+      <div class="tip">💡 这就是「解冻即校准」：你的每一次真实选择都在教模型认识你。η（校准步长）从 0.05 起每周期 ×0.9 衰减，保证调整幅度越往后越小、最终收敛——右栏看板可以实时看到这个过程。</div>
+
+      <h3 id="m-mode">⑥ 三种演示模式</h3>
+      <table>
+        <tr><th style="width:130px;"></th><th>讲解模式</th><th>合成用户模式</th><th>自定义模式</th></tr>
+        <tr><td><b>用户</b></td><td>小周 · 月薪 ¥8,000 · 10 日发薪</td><td>U0061 · 月薪 ¥6,786 · 10 日发薪</td><td><b>你自己</b>：月薪、发薪日、账单都由你填</td></tr>
+        <tr><td><b>数据</b></td><td>剧本化生成（含计划外支出逐期收敛的故事线）</td><td>仿真项目真实合成流水（seed=20260926），逐日回放</td><td>按你的输入现场生成：AI 冷启动给出缓冲比例建议，消费曲线按月薪缩放</td></tr>
+        <tr><td><b>适合讲</b></td><td>完整功能流程、闭环故事，第一次演示用它</td><td>"数据来自我们的生成器，可复现"，回答评委追问时用它</td><td>"这就是用户真实上手的样子"——冷启动问卷正是未来模型的输入特征</td></tr>
+        <tr><td><b>注意</b></td><td>—</td><td>回放历史不可改写，故紧绷日不提供"压缩预算"选项</td><td>输入只存本机内存，关页面即消失；选填 2 项（消费习惯 / 储蓄目标）会让建议更准</td></tr>
+      </table>
+
+      <h3 id="m-panel">⑦ 右栏「评委看板」看什么</h3>
+      <ul>
+        <li><b>闭环步骤条</b>：M1 分账 → M2 监测 → M4 解冻 → M3 复盘 → 校准，当前环节高亮，评委一眼看懂系统运转到哪一步。</li>
+        <li><b>三池实时状态</b>：刚性 / 缓冲 / 灵活三池余额条形图，随仿真逐日变化。</li>
+        <li><b>校准参数</b>：当前缓冲比例、校准步长 η、本期信号——每次选择后这里当场变化。</li>
+        <li><b>解冻信号历史</b>：红点=动用 / 绿点=未动用，四个周期一排，行为轨迹一目了然。</li>
+        <li><b>MAPE 收敛曲线</b>：33.70% → 26.97% → 26.42% → 26.02%（标注"合成数据回放"，与仿真项目 convergence.csv 一致）。</li>
+      </ul>
+
+      <h3 id="m-glos">⑧ 名词解释（人话版）</h3>
+      <p class="glos">
+        <b>三池分账</b>：把月薪按用途分成刚性支出池、缓冲池、灵活池三份，各花各的。<br>
+        <b>刚性支出池</b>：必须付的钱（房租、车贷、订阅、通勤），由账单识别，系统不参与估计。<br>
+        <b>缓冲池</b>：应急备用金，平时锁定，紧绷日可"解冻"动用。<br>
+        <b>灵活池</b>：日常可花的钱，花完就紧巴了。<br>
+        <b>解冻</b>：提前动用锁定的缓冲资金——这个动作本身就是校准信号。<br>
+        <b>校准步长 η</b>：每次调整的幅度，从 0.05 起每周期 ×0.9 衰减，保证越调越稳。<br>
+        <b>MAPE</b>：预测误差百分比，越小越准；本产品从 33.70% 收敛到 26.02%。<br>
+        <b>断档</b>：灵活池被花穿（透支），说明预测太紧，同样触发校准。<br>
+        <b>护栏层</b>：合规规则引擎（不是 AI），拦截"稳赚""保本"等违规表述。<br>
+        <b>现金流健康度</b>：0–100 分的结构体检分。按四条规则倒扣：刚性占比超 55% 扣 30 分、缓冲池不足月薪 5% 扣 20 分、灵活池日均不足 ¥50 扣 20 分、出现断档扣 15 分。它衡量的是<b>结构是否健康</b>，不是"预测准不准"。<br>
+        <b>数据不出域</b>：所有计算在本机完成，不上传云端——本页面离线可跑就是证据。
+      </p>
+
+      <h3 id="m-faq">⑨ 常见问题与排障</h3>
+      <ol>
+        <li><b>按钮点了没反应？</b>文件被 WPS / Word / 记事本打开了 → 右键 → 打开方式 → Chrome / Edge。360 / QQ 浏览器请切"极速模式"。</li>
+        <li><b>页面顶部出现提示条？</b>说明交互脚本没有运行起来（正常情况下看不到这一条）。请改用 Chrome / Edge 打开本文件。</li>
+        <li><b>需要联网吗？</b>不需要。整个文件零外部依赖，断网也能跑。</li>
+        <li><b>演示数据是真的吗？</b>是合成数据：讲解模式为剧本化生成；合成用户模式来自团队仿真项目（200 用户 × 12 月，seed=20260926 可复现）；自定义模式按你的输入现场生成。</li>
+        <li><b>自定义模式填的信息会泄露吗？</b>不会。月薪、账单只存在你本机浏览器的内存变量里，不联网、不写盘、不上传——关掉页面即彻底消失。这本身就是产品"数据不出域"承诺的现场证明。</li>
+        <li><b>MAPE 曲线是真实计算的吗？</b>曲线数值与仿真结果一致（合成数据回放口径），用于演示收敛形态，不是精度承诺。</li>
+        <li><b>手机上看体验如何？</b>可以打开，但双栏布局为答辩投屏设计，建议电脑演示。</li>
+      </ol>
+      <p style="color:#9aa0a8;font-size:11.5px;margin-top:14px;">工银薪e安 · 使用说明书（页内版）</p>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===== 真实合成用户数据（来自仿真项目 gen_data.py，seed=20260926） ===== */
+var REAL_USER={"user":{"id":"U0061","salary":6785.55,"payday":10,"rent":2022.81,"credit":736.23},"initBalance":10178.33,"windows":[{"start":"2025-01-10","days":[[0,-203.19,0],[0,6785.55,1],[1,-2022.81,2],[1,-293.53,0],[1,-225.27,0],[1,-198.21,0],[2,-467.06,0],[2,-268.61,0],[3,-95.47,0],[3,-86.32,0],[3,-49.25,0],[4,-3602.26,4],[4,-37.71,0],[4,-18.22,0],[5,-83.68,0],[5,-61.27,0],[6,-70.69,0],[7,-91.64,0],[7,-72.12,0],[7,-65.39,0],[8,-110.91,0],[8,-88.29,0],[8,-59.33,0],[9,-736.23,3],[9,-187.46,0],[9,-64.43,0],[10,-104.62,0],[10,-76.84,0],[11,-51.01,0],[12,-94.24,0],[12,-76.25,0],[13,-100.29,0],[13,-74.94,0],[13,-58.55,0],[14,-77.42,0],[14,-64.1,0],[15,-149.66,0],[16,-129.68,0],[16,-108.48,0],[17,-29.17,0],[18,-61.32,0],[18,-48.77,0],[19,-25.51,0],[20,-39.67,0],[20,-27.57,0],[20,-26.81,0],[21,-30.71,0],[22,-81.38,0],[23,-173.54,0],[23,-100.12,0],[24,-315.55,0],[25,-251.76,0],[25,-249.05,0],[25,-40.76,0],[26,-263.62,0],[26,-210.58,0],[26,-197.76,0],[27,-227.5,0],[27,-206.12,0],[27,-129.33,0],[28,-221.54,0],[28,-153.84,0],[29,-260.89,0],[29,-217.46,0],[30,-190.74,0]]},{"start":"2025-02-10","days":[[0,-343.68,0],[0,6785.55,1],[1,-483.03,0],[2,-626.7,0],[3,-2022.81,2],[3,-251.9,0],[3,-139.5,0],[4,-214.99,0],[4,-181.85,0],[5,-333.54,0],[5,-319.29,0],[5,-156.93,0],[6,-389.35,0],[7,-736.23,3],[7,-308.99,0],[7,-164.66,0],[8,-105.08,0],[8,-61.97,0],[9,-86.27,0],[9,-74.59,0],[9,-41.96,0],[10,-109.51,0],[10,-89.98,0],[11,-48.67,0],[12,-193.06,0],[12,-91.04,0],[13,-107.29,0],[13,-84.93,0],[14,-49.41,0],[16,-11.28,0],[19,-125.33,0],[19,-83.7,0],[20,-96.22,0],[20,-65.72,0],[21,-112.42,0],[21,-91.02,0],[21,-36.08,0],[22,-63.59,0],[23,-24.74,0],[24,-107.36,0],[24,-77.02,0],[24,-75.11,0],[25,-70.06,0],[26,-192.97,0],[26,-171.56,0],[26,-72.46,0],[27,-162.06,0],[27,-147.57,0],[27,-127.66,0]]},{"start":"2025-03-10","days":[[0,-246.05,0],[0,-197.81,0],[0,-182.32,0],[0,6785.55,1],[1,-2022.81,2],[1,-244.47,0],[1,-203.94,0],[2,-117.36,0],[2,-110.38,0],[3,-95.09,0],[3,-69.51,0],[4,-100.07,0],[5,-158.13,0],[5,-156.44,0],[5,-75.1,0],[6,-153.32,0],[10,-31.83,0],[15,-736.23,3],[22,-84.99,0],[22,-79.06,0],[23,-89.7,0],[23,-75.33,0],[24,-81.82,0],[24,-52.46,0],[24,-37.55,0],[25,-101.7,0],[25,-78.43,0],[25,-67.37,0],[26,-55.41,0],[27,-143.71,0],[28,-78.51,0],[28,-62.02,0],[29,-85.24,0],[30,-2022.81,2],[30,-75.74,0]]},{"start":"2025-04-10","days":[[0,-203.33,0],[0,6785.55,1],[1,-253.0,0],[2,-358.02,0],[3,-212.05,0],[3,-127.17,0],[3,-108.11,0],[4,-116.25,0],[5,-102.29,0],[5,-57.57,0],[6,-80.81,0],[7,-100.37,0],[8,-111.36,0],[9,-155.05,0],[10,-96.42,0],[11,-117.92,0],[11,-113.52,0],[11,-49.48,0],[12,-64.8,0],[13,-77.32,0],[13,-69.45,0],[13,-61.12,0],[14,-120.43,0],[18,-28.88,0],[19,-736.23,3],[21,-88.0,0],[22,-109.42,0],[23,-165.03,0],[23,-154.72,0],[24,-147.59,0],[24,-126.88,0],[24,-120.56,0],[25,-100.87,0],[25,-89.27,0],[26,-102.52,0],[26,-77.22,0],[26,-72.73,0],[27,-71.89,0],[27,-69.81,0],[27,-63.24,0],[28,-59.97,0],[29,-107.4,0],[29,-75.61,0],[29,-36.49,0]]}],"note":"合成数据回放，非精度承诺。来源: gen_data.py seed=20260926"};
+
+/* ================= 工具 ================= */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function fmt(n){return Math.round(n).toLocaleString('zh-CN');}
+function $(id){return document.getElementById(id);}
+function toast(msg,gold){var t=$('toast');t.textContent=msg;t.className='toast show'+(gold?' gold':'');
+  setTimeout(function(){t.className='toast';},2600);}
+
+/* ================= 演示配置（手写，无外部依赖） ================= */
+/* 讲解模式（story）：月薪 8,000，周期 30 天，刚性池 3,700（固定支出合计 3,699 取整） */
+var FIXED=[{name:'房租',amt:2400,day:1},{name:'车贷还款',amt:800,day:15},
+           {name:'订阅服务',amt:199,day:5},{name:'通勤话费',amt:300,day:8}];
+/* 每周期一笔计划外支出（演示脚本，金额逐周期收敛） */
+var SURPRISE={1:{day:20,amt:800,label:'突发医疗支出'},2:{day:23,amt:600,label:'人情往来'},
+              3:{day:26,amt:350,label:'家电维修'},4:null};
+var MAPE=[33.70,26.97,26.42,26.02];      /* 来自仿真项目 results/convergence.csv（2026-10-01 定稿）；曲线 Y 轴已自适应 */
+var BANDW=[1600,1100,750,450];           /* 预测区间半宽，随周期收窄 */
+
+var S; /* 全局状态 */
+function freshState(){
+  return {cycle:1, ratio:0.15, eta:0.05,
+    mode:'story', income:8000, rigid:3700, daysInCycle:30, ymax:9000, startBalance:0,
+    buffer:0, flex:0, bufferLeft:0, flexLeft:0,
+    daily:[], day:-1, balance:0, spent:0, rigidPaid:0,
+    realDays:null, realMax:null, fixed:null, payday:10,
+    rng:mulberry32(20260926), timer:null, speed:1,
+    m4Done:false, unfroze:false, transfer:0, squeezed:false, broken:false,
+    path:[], history:[], running:false};
+}
+S=freshState();
+
+/* ================= 界面切换 ================= */
+var CAPTIONS={
+  'scr-home':'<b>开场</b>　产品入口页：强调"离线运行、数据不出本机"。',
+  'scr-setup':'<b>自定义模式</b>　输入你的月薪与账单，AI 现场生成你的分账方案（信息不出本机）。',
+  'scr-m1':'<b>第 1 步 · M1 发薪日分账</b>　到账即分三池：刚性支出由账单识别，缓冲比例由校准层给出。',
+  'scr-m2':'<b>第 2 步 · M2 现金流日历</b>　余额实线 + 预测区间，紧绷日自动弹窗。',
+  'scr-m3':'<b>第 4 步 · M3 周期复盘</b>　四段式文字复盘，并说明本期校准结果。',
+  'scr-final':'<b>总结</b>　四周期收敛结果一览。'
+};
+function showScreen(id){
+  var list=document.querySelectorAll('.screen');
+  for(var i=0;i<list.length;i++) list[i].classList.remove('show');
+  $(id).classList.add('show');
+  $('caption').innerHTML=CAPTIONS[id]||'';
+  var map={'scr-m1':'st1','scr-m2':'st2','scr-m3':'st3','scr-final':'st5'};
+  ['st1','st2','st3','st4','st5'].forEach(function(s){$(s).classList.remove('cur');});
+  if(map[id]) $(map[id]).classList.add('cur');
+}
+function togglePanel(){
+  document.body.classList.toggle('no-panel');
+  var off=document.body.classList.contains('no-panel');
+  $('panelToggle').textContent='评委视角：'+(off?'关':'开');
+  $('panelToggle').classList.toggle('on',!off);
+}
+
+/* ================= 使用说明弹层 ================= */
+function openManual(){
+  $('manual-mask').classList.add('show');
+  var b=$('manualBtn'); if(b) b.classList.add('on');
+}
+function closeManual(){
+  $('manual-mask').classList.remove('show');
+  var b=$('manualBtn'); if(b) b.classList.remove('on');
+}
+function manualGo(id){
+  var el=document.getElementById(id), body=$('manual-body');
+  if(el&&body) body.scrollTop=el.offsetTop-body.offsetTop-6;
+}
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'&&$('manual-mask').classList.contains('show')) closeManual();
+});
+
+/* ================= 模式切换 ================= */
+function setMode(m, silent){
+  stopSim();
+  if(m!==S.mode || silent!==true){ S=freshState(); S._lastInt=420; }
+  S.mode=m;
+  if(m==='real'){
+    S.income=REAL_USER.user.salary;                 /* 6785.55 */
+    S.rigid=Math.round(REAL_USER.user.rent+REAL_USER.user.credit);  /* 2759 */
+  }else if(m==='custom'){
+    if(PROFILE.ready){
+      S.income=PROFILE.income; S.rigid=PROFILE.rigid; S.payday=PROFILE.payday; S.fixed=PROFILE.fixed;
+    }
+  }else{
+    S.income=8000; S.rigid=3700; S.fixed=FIXED; S.payday=10;
+  }
+  $('mode-story').classList.toggle('cur',m==='story');
+  $('mode-real').classList.toggle('cur',m==='real');
+  $('mode-custom').classList.toggle('cur',m==='custom');
+  $('hero-sub').innerHTML=m==='real'
+    ? '合成用户 <b>U0061</b> · 月薪 ¥6,786 · 每月 10 日发薪<br><span style="font-size:11px">流水来自本队数据生成器（200 用户，seed=20260926），真实回放 4 个发薪窗口</span>'
+    : (m==='custom'
+      ? (PROFILE.ready
+        ? '已保存你的方案：月薪 <b>¥'+fmt(PROFILE.income)+'</b> · 每月 <b>'+PROFILE.payday+' 日</b>发薪 · 固定支出 '+PROFILE.fixed.length+' 项<br><span style="font-size:11px">仅存在本机内存，关掉页面即消失；点下方按钮直接进入，或重新填写</span>'
+        : '属于你的版本：输入月薪与账单，<b>AI 现场为你规划和分账</b><br><span style="font-size:11px">信息只在你本机内存中计算，不上传、不留存</span>')
+      : '发工资的那天，钱就已经各就各位。<br>演示用户：小周 · 毕业 2 年 · 月薪 ¥8,000 · 每月 10 日发薪');
+  $('start-btn').textContent=m==='custom'
+    ? (PROFILE.ready?'进入我的方案 · 第 1 个发薪周期':'开始定制我的分账方案 →')
+    : '开始体验 · 第 1 个发薪周期';
+  computePools(); updatePanel();
+}
+
+/* ================= 自定义模式：填写 → AI 冷启动建议 → 采用 ================= */
+/* PROFILE 是模块级变量（不随 freshState 重置），只存本机内存，关页面即消失 */
+var PROFILE={ready:false,income:0,payday:10,rigid:0,fixed:[],type:'jun',savings:0,ratio:0.15,reasons:''};
+(function initSetup(){
+  var sel=$('cu-payday'), s='';
+  for(var d=1;d<=28;d++) s+='<option value="'+d+'"'+(d===10?' selected':'')+'>每月 '+d+' 日</option>';
+  sel.innerHTML=s;
+  cuAddItem('房租',2400,1); cuAddItem('车贷 / 信用还款',800,15);
+})();
+function cuAddItem(name,amt,day){
+  var row=document.createElement('div');
+  row.className='cu-item';
+  row.innerHTML='<input class="nm" type="text" placeholder="项目（如：房租）" value="'+(name||'')+'">'
+    +'<input class="am" type="number" placeholder="金额" min="0" value="'+(amt!=null?amt:'')+'">'
+    +'<input class="dy" type="number" placeholder="扣款日" min="1" max="28" value="'+(day!=null?day:'')+'">'
+    +'<button class="del" onclick="this.parentElement.remove()" title="删除">✕</button>';
+  $('cu-items').appendChild(row);
+}
+function cuErr(msg){
+  var e=$('cu-err');
+  if(msg){ e.style.display='block'; e.innerHTML='⚠ '+msg; }
+  else e.style.display='none';
+}
+function cuReadForm(){
+  var income=parseFloat($('cu-income').value), payday=parseInt($('cu-payday').value,10);
+  if(!(income>=1000&&income<=1000000)) return {err:'请填写合理的月薪（1,000 ~ 1,000,000 元）。'};
+  if(!(payday>=1&&payday<=28)) return {err:'发薪日请在 1–28 日之间选择。'};
+  var items=[], rows=document.querySelectorAll('#cu-items .cu-item');
+  for(var i=0;i<rows.length;i++){
+    var nm=rows[i].querySelector('.nm').value.trim();
+    var am=parseFloat(rows[i].querySelector('.am').value);
+    var dy=parseInt(rows[i].querySelector('.dy').value,10);
+    if(!nm&&!(am>0)) continue; /* 整行留空则忽略 */
+    if(!nm) return {err:'第 '+(i+1)+' 项固定支出请填项目名称。'};
+    if(!(am>0)) return {err:'「'+nm+'」请填正确的金额。'};
+    if(!(dy>=1&&dy<=28)) return {err:'「'+nm+'」的扣款日请在 1–28 日之间。'};
+    items.push({name:nm,amt:Math.round(am*100)/100,billDay:dy});
+  }
+  var rigid=0; for(i=0;i<items.length;i++) rigid+=items[i].amt;
+  if(rigid>=income*0.9) return {err:'固定支出合计 ¥'+fmt(rigid)+'，已占月薪九成以上——这种状态谈不上"分账"，建议先复核账单结构再来体验。'};
+  var savings=parseFloat($('cu-savings').value)||0;
+  if(savings<0) savings=0;
+  if(savings>=income-rigid) return {err:'储蓄目标 ¥'+fmt(savings)+' 超过了可支配收入（月薪 − 固定支出），请调低。'};
+  return {income:income,payday:payday,items:items,rigid:rigid,type:$('cu-type').value,savings:savings};
+}
+/* 冷启动启发式（概念演示用透明规则；正式版由 L1 预测层给出） */
+function genPlan(){
+  cuErr('');
+  var f=cuReadForm();
+  if(f.err){ cuErr(f.err); $('plan-card').style.display='none'; return; }
+  var share=f.rigid/f.income, avail=f.income-f.rigid;
+  var ratio=0.15, reasons=['基础 15%（首周期无历史记录，取经验默认）'];
+  if(f.type==='jian'){ ratio-=0.02; reasons.push('消费习惯自评为节俭型，下调 2%'); }
+  if(f.type==='xiang'){ ratio+=0.02; reasons.push('消费习惯自评为享受型，上调 2% 以留足余量'); }
+  if(share>0.5){ ratio+=0.03; reasons.push('固定支出占月薪 '+Math.round(share*100)+'%（偏高），灵活池波动会更集中，上调 3%'); }
+  if(f.savings>0){
+    var need=f.savings/avail;
+    if(need>ratio){ ratio=need; reasons.push('为覆盖每月 ¥'+fmt(f.savings)+' 的储蓄目标，比例提升至能容纳该目标'); }
+    else reasons.push('储蓄目标 ¥'+fmt(f.savings)+' 可纳入缓冲池一并锁定');
+  }
+  ratio=Math.min(0.25,Math.max(0.08,ratio));
+  var buffer=Math.round(avail*ratio/10)*10, flex=Math.round(f.income)-f.rigid-buffer;
+  var daily=flex/30;
+  $('pl-rigid').textContent='¥'+fmt(f.rigid)+'（占月薪 '+Math.round(share*100)+'%）';
+  $('pl-ratio').textContent=(ratio*100).toFixed(1)+'% ≈ ¥'+fmt(buffer);
+  $('pl-flex').textContent='¥'+fmt(flex);
+  $('pl-daily').textContent='¥'+fmt(daily)+' / 天';
+  $('pl-why').innerHTML='<b>建议依据</b>：'+reasons.join('；')
+    +'。这不是拍脑袋的固定值——之后每个周期你的"动用/未动用缓冲"都会校准它，越用越贴合你。';
+  var warn='';
+  if(share>0.6) warn+='⚠ 固定支出占月薪 '+Math.round(share*100)+'%，结构性偏高，建议优先复核账单。<br>';
+  if(daily<30) warn+='⚠ 日均预算不足 ¥30，本期大概率会频繁触发"紧绷日"预警——这也正是本产品要帮你提前看见的事。';
+  $('pl-warn').innerHTML=warn;
+  /* 暂存，待"采用方案"时正式生效 */
+  PROFILE={ready:false,income:f.income,payday:f.payday,rigid:f.rigid,
+    fixed:f.items.map(function(it){ return {name:it.name,amt:it.amt,billDay:it.billDay,day:(it.billDay-f.payday+30)%30}; }),
+    type:f.type,savings:f.savings,ratio:ratio,reasons:reasons.join('；')};
+  var card=$('plan-card'); card.style.display='block';
+  card.scrollIntoView({block:'nearest'});
+}
+function applyPlan(){
+  PROFILE.ready=true;
+  S.income=PROFILE.income; S.rigid=PROFILE.rigid; S.payday=PROFILE.payday;
+  S.fixed=PROFILE.fixed; S.ratio=PROFILE.ratio; S.daysInCycle=30;
+  enterCycle();
+  toast('已按 AI 建议完成首周期分账（比例 '+pct(S.ratio)+'），之后可随时用滑块微调', true);
+}
+
+/* ================= M1 分账 ================= */
+function enterCycle(){
+  if(S.mode==='real'){
+    S.income=REAL_USER.user.salary;
+    S.rigid=Math.round(REAL_USER.user.rent+REAL_USER.user.credit);
+    prepRealWindow();
+  }else if(S.mode==='custom'){
+    if(!PROFILE.ready){ showScreen('scr-setup'); updatePanel(); return; }
+    S.income=PROFILE.income; S.rigid=PROFILE.rigid; S.payday=PROFILE.payday;
+    S.fixed=PROFILE.fixed; S.daysInCycle=30;
+  }else{
+    S.income=8000; S.rigid=3700; S.daysInCycle=30; S.fixed=FIXED; S.payday=10;
+  }
+  computePools();
+  renderM1();
+  showScreen('scr-m1');
+  updatePanel();
+}
+function computePools(){
+  S.buffer=Math.round((S.income-S.rigid)*S.ratio/10)*10;
+  S.flex=Math.round(S.income)-S.rigid-S.buffer;
+  S.bufferLeft=S.buffer; S.flexLeft=S.flex; /* 供看板展示 */
+}
+function renderM1(){
+  $('m1-date').textContent='第 '+S.cycle+' 周期 · 工资已到账 ¥'+fmt(S.income)+'（每月 '+S.payday+' 日）'
+    +(S.mode==='real'?' · U0061 真实流水回放':(S.mode==='custom'?' · 你的自定义方案':''));
+  $('p-rigid').textContent='¥'+fmt(S.rigid);
+  $('p-buffer').textContent='¥'+fmt(S.buffer);
+  $('p-flex').textContent='¥'+fmt(S.flex);
+  $('p-daily').textContent='¥'+fmt(S.flex/S.daysInCycle);
+  $('p-rigid-detail').textContent=S.mode==='real'
+    ? '账单识别：房租 ¥'+fmt(REAL_USER.user.rent)+' · 信用还款 ¥'+fmt(REAL_USER.user.credit)+'（按发薪窗口自动识别）'
+    : (S.mode==='custom'
+      ? '按你填写的账单：'+S.fixed.map(function(f){return f.name+' ¥'+fmt(f.amt)+'（'+f.billDay+' 日）';}).join(' · ')
+      : '账单识别：房租 ¥2,400（1 日）· 车贷还款 ¥800（15 日）· 订阅 ¥199（5 日）· 通勤话费 ¥300（8 日）');
+  var r=Math.round(S.ratio*100);
+  $('ratioSlider').value=r; $('ratioLab').textContent=r+'%';
+  $('p-buffer-why').textContent=S.cycle===1
+    ? (S.mode==='custom'
+      ? '应急备用'+(PROFILE.savings?'，含强制储蓄 ¥'+fmt(PROFILE.savings):'')+'，AI 冷启动建议 '+r+'%'
+      : '应急备用，首周期无历史记录，取默认值 '+r+'%')
+    : '应急备用，由校准层按上周期动用情况调整为 '+r+'%';
+  $('m1-why').innerHTML='<b>为什么是这个数？</b>'
+    +(S.mode==='custom'
+      ? '刚性支出 ¥'+fmt(S.rigid)+' 来自你填写的账单；'
+      : '刚性支出 ¥'+fmt(S.rigid)+' 由本行账单记录识别，系统不参与估计；')
+    +(S.cycle===1
+      ? (S.mode==='custom'
+        ? '缓冲比例 '+r+'% 由冷启动规则给出（'+PROFILE.reasons+'），之后每次解冻都会让它更贴合你。'
+        : '缓冲比例首周期取默认值，之后每次解冻都会让它更贴合你的真实开销。')
+      : '上周期你'+(S.history.length&&S.history[S.history.length-1].signal?'<b>动用了缓冲</b>，校准层判定此前预测<b>偏紧</b>，本期缓冲比例上调':'<b>未动用缓冲</b>，本期缓冲比例小幅下调')    +'至 '+r+'%。');
+  renderHealth();
+}
+function onSlider(v){
+  S.ratio=v/100; computePools(); renderM1(); updatePanel();
+}
+
+/* ================= 现金流健康度 ================= */
+/* 评分形式吸收入后端同学的规则（100 分制倒扣 + 80/60 三档阈值），
+   但打分项按我方三池口径重算：刚性占比 / 缓冲厚度 / 灵活池日均 / 历史断档。
+   规则透明，逐项列出扣分理由，便于现场讲清"分是怎么来的一分扣在哪"。 */
+function healthScore(){
+  var inc=S.income||1, fr=S.rigid/inc, br=S.buffer/inc, daily=S.flex/S.daysInCycle;
+  var score=100, items=[];
+  if(fr>0.55){ score-=30; items.push(['刚性支出占月薪 '+Math.round(fr*100)+'%（>55%），现金流被账单锁死','−30']); }
+  else if(fr>0.45){ score-=15; items.push(['刚性支出占月薪 '+Math.round(fr*100)+'%（45–55%），偏高','−15']); }
+  else items.push(['刚性支出占月薪 '+Math.round(fr*100)+'%，结构健康','']);
+  if(br<0.05){ score-=20; items.push(['缓冲池仅占 '+(br*100).toFixed(1)+'%（<5%），应急垫子太薄','−20']); }
+  else if(br>0.30){ score-=10; items.push(['缓冲占比 '+(br*100).toFixed(1)+'%（>30%），挤占灵活池','−10']); }
+  else items.push(['缓冲池占 '+(br*100).toFixed(1)+'%，落在 5–30% 合理区间','']);
+  if(daily<50){ score-=20; items.push(['灵活池日均仅 ¥'+fmt(daily)+'（<¥50），月底大概率紧绷','−20']); }
+  else if(daily<80){ score-=10; items.push(['灵活池日均 ¥'+fmt(daily)+'（<¥80），余量偏紧','−10']); }
+  else items.push(['灵活池日均 ¥'+fmt(daily)+'，余量充足','']);
+  var broke=0,i; for(i=0;i<S.history.length;i++) if(S.history[i].broken) broke++;
+  if(broke>0){ score-=15; items.push(['已有 '+broke+' 个周期出现灵活池断档（透支）','−15']); }
+  else items.push([S.history.length?'已跑周期均未出现断档（透支）':'尚无历史周期，本周期起开始记录','']);
+  score=Math.max(0,Math.min(100,score));
+  return {score:score,items:items};
+}
+function healthColor(s){ return s>=80?'#1f8a4c':(s>=60?'#BA7517':'#C7000B'); }
+function renderHealth(){
+  var h=healthScore(), col=healthColor(h.score);
+  var cx=48, cy=46, R=36, sw=9;
+  var ang=Math.PI*(1-h.score/100);
+  var x1=cx+R*Math.cos(ang), y1=cy-R*Math.sin(ang);
+  var arc=h.score>0
+    ? '<path d="M'+(cx-R)+' '+cy+' A '+R+' '+R+' 0 '+(h.score>50?1:0)+' 1 '+x1.toFixed(2)+' '+y1.toFixed(2)
+      +'" fill="none" stroke="'+col+'" stroke-width="'+sw+'" stroke-linecap="round"/>'
+    : '';
+  $('health-gauge').innerHTML=
+    '<path d="M'+(cx-R)+' '+cy+' A '+R+' '+R+' 0 0 1 '+(cx+R)+' '+cy+'" fill="none" stroke="#eceef1"'
+    +' stroke-width="'+sw+'" stroke-linecap="round"/>'+arc
+    +'<text x="'+cx+'" y="'+(cy-2)+'" font-size="21" font-weight="700" fill="'+col+'" text-anchor="middle">'+h.score+'</text>'
+    +'<text x="'+cx+'" y="'+(cy+10)+'" font-size="8.5" fill="#9aa0a8" text-anchor="middle">/ 100</text>';
+  var verdict=h.score>=80?'健康':(h.score>=60?'需要留意':'压力较大');
+  $('health-verdict').innerHTML='<span style="color:'+col+'">'+verdict+'</span>'
+    +'<span style="font-weight:400;color:var(--sub);font-size:11px">　80 以上绿 · 60–80 黄 · 60 以下红</span>';
+  var s='';
+  for(var i=0;i<h.items.length;i++){
+    var it=h.items[i];
+    s+='<div>· '+it[0]+(it[1]?'<span class="minus">'+it[1]+'</span>':'<span class="ok">✓</span>')+'</div>';
+  }
+  $('health-list').innerHTML=s;
+}
+function confirmM1(){
+  S.bufferLeft=S.buffer; S.flexLeft=S.flex;
+  if(S.mode==='real'){ if(S.cycle===1) S.balance=REAL_USER.initBalance; /* 之后各周期余额连续 */ }
+  else S.balance=0;
+  S.startBalance=S.balance;
+  S.spent=0; S.rigidPaid=0;
+  S.day=-1; S.path=[]; S.m4Done=false; S.unfroze=false; S.transfer=0;
+  S.squeezed=false; S.broken=false; S.running=true;
+  if(S.mode==='story'||S.mode==='custom') genDaily();
+  buildChart(); renderChips();
+  $('evtlog').innerHTML=''; log('fix','分账完成：刚性 ¥'+fmt(S.rigid)+' · 缓冲 ¥'+fmt(S.buffer)+' · 灵活 ¥'+fmt(S.flex)
+    +(S.mode==='real'?'（窗口起点 '+REAL_USER.windows[S.cycle-1].start+'，期初余额 ¥'+fmt(S.startBalance)+'）':''));
+  showScreen('scr-m2'); updatePanel();
+  startSim();
+}
+
+/* ================= M2 仿真 ================= */
+/* 计划外支出：讲解模式用剧本金额；自定义模式按月薪比例缩放（故事结构不变） */
+function effSurprise(){
+  var sp=SURPRISE[S.cycle];
+  if(!sp) return null;
+  if(S.mode!=='custom') return sp;
+  return {day:sp.day, label:sp.label, amt:Math.max(100,Math.round(sp.amt*S.income/8000/10)*10)};
+}
+/* 消费效应形状与仿真项目 params.json 对齐：发薪后 3 天 ×2.2、周末 ×1.5、月末 5 天 ×0.45 */
+function genDaily(){
+  var d, f, n, arr=[], raw=0;
+  for(d=0;d<S.daysInCycle;d++){
+    f=1.0;
+    if(d<3) f*=2.2;                            /* 发薪后峰值 */
+    var wd=d%7; if(wd===5||wd===6) f*=1.5;     /* 周末上升 */
+    if(d>=S.daysInCycle-5) f*=0.45;            /* 月末收缩 */
+    n=0.75+S.rng()*0.5;
+    var v=Math.round(100*f*n*10)/10;
+    arr.push(v); raw+=v;
+  }
+  /* 归一：基准开销总额 = 灵活池的 85%，留出余量；计划外支出另算，不参与归一 */
+  var scale=(S.flex*0.85)/raw;
+  for(d=0;d<S.daysInCycle;d++) arr[d]=Math.round(arr[d]*scale*10)/10;
+  var sp=effSurprise();
+  if(sp) arr[sp.day]+=sp.amt;
+  S.daily=arr;
+}
+/* 真实合成用户：把当前窗口流水聚合成逐日 {income, fixed[], flex, large} */
+function prepRealWindow(){
+  var w=REAL_USER.windows[S.cycle-1], agg={}, maxd=0, mx={day:-1,amt:0,large:0};
+  w.days.forEach(function(t){
+    var d=t[0]; maxd=Math.max(maxd,d);
+    if(!agg[d]) agg[d]={income:0,fixed:[],flex:0,large:0};
+    var amt=t[1], ty=t[2];
+    if(ty===1) agg[d].income+=amt;
+    else if(ty===2) agg[d].fixed.push({name:'房租',amt:-amt});
+    else if(ty===3) agg[d].fixed.push({name:'信用还款',amt:-amt});
+    else if(ty===4){ agg[d].flex+=-amt; agg[d].large=-amt; }
+    else agg[d].flex+=-amt;
+  });
+  for(var d=0;d<=maxd;d++){
+    var a=agg[d]; if(a&&a.flex>mx.amt){ mx={day:d,amt:a.flex,large:a.large}; }
+  }
+  S.realDays=agg; S.daysInCycle=maxd+1; S.realMax=mx;
+}
+function setSpeed(v){
+  S.speed=v;
+  [1,2,4].forEach(function(x){$('sp'+x).classList.toggle('cur',x===v);});
+}
+function startSim(){
+  stopSim();
+  S.timer=setInterval(tick,420/S.speed);
+}
+function stopSim(){ if(S.timer){clearInterval(S.timer);S.timer=null;} }
+/*  speed 改变时重启定时器 */
+setInterval(function(){ if(S.running&&S.timer){ var want=420/S.speed;
+  if(Math.abs(S._lastInt-want)>1){ startSim(); S._lastInt=want; } } },300);
+S._lastInt=420;
+
+function tick(){
+  if(S.day>=S.daysInCycle-1){ endCycle(); return; }
+  S.day++;
+  var d=S.day;
+  if(S.mode==='real'){
+    /* —— 真实合成用户流水回放 —— */
+    var fd=S.realDays[d]||{income:0,fixed:[],flex:0,large:0};
+    if(fd.income>0){ S.balance+=fd.income; log('pos','发薪日到账 +¥'+fmt(fd.income)); }
+    for(var q=0;q<fd.fixed.length;q++){ var fx=fd.fixed[q];
+      S.balance-=fx.amt; S.rigidPaid+=fx.amt; log('fix','固定支出：'+fx.name+' -¥'+fmt(fx.amt)); }
+    if(fd.large>0) log('neg','计划外大额支出 -¥'+fmt(fd.large)+'（含在今日开销内）');
+    if(fd.flex>0){ S.balance-=fd.flex; S.flexLeft-=fd.flex; S.spent+=fd.flex; }
+  }else{
+    /* —— 讲解 / 自定义模式（脚本化生成） —— */
+    if(d===0){ S.balance+=S.income; log('pos','发薪日到账 +¥'+fmt(S.income)); }
+    var FX=S.fixed||FIXED;
+    for(var i=0;i<FX.length;i++){
+      if(FX[i].day===d){ S.balance-=FX[i].amt; S.rigidPaid+=FX[i].amt;
+        log('fix','固定支出：'+FX[i].name+' -¥'+fmt(FX[i].amt)); }
+    }
+    var spend=S.daily[d]; S.balance-=spend; S.flexLeft-=spend; S.spent+=spend;
+    var sp=effSurprise();
+    if(sp&&d===sp.day) log('neg','计划外支出：'+sp.label+' -¥'+fmt(sp.amt)+'（含在今日开销内）');
+  }
+  if(S.flexLeft<0&&!S.broken){ S.broken=true; log('neg','⚠ 灵活池已透支 ¥'+fmt(-S.flexLeft)+'，标记"断档"'); }
+  S.path.push(S.balance);
+  drawActual(); renderChips();
+  $('dayLab').textContent=(d===0?'发薪日':'发薪日后第 '+d+' 天')+' · '+d+' / '+(S.daysInCycle-1);
+  /* M4 触发 */
+  if(S.mode==='real'){
+    /* 真实模式：以本期至今的实际日均开销外推剩余天数，预计缺口即预警 */
+    if(!S.m4Done&&d>=3&&d<S.daysInCycle-2){
+      var avg=S.spent/(d+1), remainR=avg*(S.daysInCycle-1-d);
+      if(S.flexLeft-remainR<0){ stopSim(); openM4(-(S.flexLeft-remainR)); }
+    }
+  }else{
+    /* 讲解 / 自定义模式：计划外支出发生之后，若预计本期剩余开销超过灵活池余额则预警 */
+    var sp2=effSurprise();
+    var spDay=sp2?sp2.day:999;
+    if(!S.m4Done&&d>=Math.max(2,spDay)&&d<S.daysInCycle-2){
+      var remain=0; for(var j=d+1;j<S.daysInCycle;j++) remain+=S.daily[j];
+      if(S.flexLeft-remain<0){ stopSim(); openM4(-(S.flexLeft-remain)); }
+    }
+  }
+}
+function log(cls,msg){
+  var el=$('evtlog'), line=document.createElement('div');
+  line.className=cls; line.textContent='第'+(S.day<0?0:S.day)+'天 · '+msg;
+  el.appendChild(line); el.scrollTop=el.scrollHeight;
+}
+function renderChips(){
+  $('c-flex').textContent='¥'+fmt(S.flexLeft);
+  $('c-buffer').textContent='¥'+fmt(S.bufferLeft);
+  $('c-bal').textContent='¥'+fmt(S.balance);
+  $('c-flex').parentElement.classList.toggle('warn',S.flexLeft<0);
+  updatePanel();
+}
+
+/* ---- SVG 图 ---- */
+var CH={w:356,h:190,pl:34,pr:10,pt:12,pb:22};
+function xOf(d){return CH.pl+(CH.w-CH.pl-CH.pr)*d/Math.max(1,S.daysInCycle-1);}
+function yOf(v){return CH.pt+(CH.h-CH.pt-CH.pb)*(1-v/S.ymax);}
+function buildChart(){
+  /* 量程：真实模式余额可能远超月薪，按数据自适应 */
+  if(S.mode==='real'){
+    S.ymax=Math.ceil(Math.max(S.income*1.2,(S.startBalance+S.income)*1.05)/3000)*3000;
+  }else{
+    S.ymax=9000;
+  }
+  var svg=$('chart'), w=BANDW[S.cycle-1], s='';
+  s+='<rect x="0" y="0" width="'+CH.w+'" height="'+CH.h+'" fill="#fff" rx="12"/>';
+  var y, v, nDays=S.daysInCycle, ystep=S.ymax/3;
+  for(v=0;v<=S.ymax;v+=ystep){ y=yOf(v);
+    s+='<line x1="'+CH.pl+'" y1="'+y+'" x2="'+(CH.w-CH.pr)+'" y2="'+y+'" stroke="#eef0f3"/>';
+    s+='<text x="'+(CH.pl-4)+'" y="'+(y+3)+'" font-size="8.5" fill="#9aa0a8" text-anchor="end">'+(v/1000)+'k</text>'; }
+  for(var d=0;d<nDays;d+=6){ s+='<text x="'+xOf(d)+'" y="'+(CH.h-7)+'" font-size="8.5" fill="#9aa0a8" text-anchor="middle">'+d+'</text>'; }
+  s+='<text x="'+(CH.w-4)+'" y="'+(CH.h-7)+'" font-size="8.5" fill="#9aa0a8" text-anchor="end">天</text>';
+  /* 预测区间（名义消耗率 ~ 82%） */
+  var top='',bot='',nom, base=S.startBalance+S.income;
+  for(d=0;d<nDays;d++){ nom=base*(1-0.82*d/(nDays-1));
+    top+=xOf(d)+','+yOf(Math.min(S.ymax,nom+w))+' '; bot=xOf(d)+','+yOf(Math.max(0,nom-w))+' '+bot; }
+  s+='<polygon points="'+top+bot+'" fill="#2E5C8A" opacity="0.10"/>';
+  var nomline=''; for(d=0;d<nDays;d++){ nom=base*(1-0.82*d/(nDays-1)); nomline+=xOf(d)+','+yOf(nom)+' '; }
+  s+='<polyline points="'+nomline+'" fill="none" stroke="#2E5C8A" stroke-width="1" stroke-dasharray="3,3" opacity="0.55"/>';
+  s+='<g id="actual"></g><g id="today"></g>';
+  s+='<text x="'+(CH.pl+4)+'" y="'+(CH.pt+10)+'" font-size="9" fill="#2E5C8A">虚线/阴影：预测值与区间（第 '+S.cycle+' 周期）</text>';
+  s+='<text x="'+(CH.pl+4)+'" y="'+(CH.pt+21)+'" font-size="9" fill="#C7000B">实线：实际余额</text>';
+  svg.innerHTML=s;
+}
+function drawActual(){
+  var g=$('actual'), pts='';
+  for(var i=0;i<S.path.length;i++) pts+=xOf(i)+','+yOf(Math.max(0,S.path[i]))+' ';
+  var low=S.flexLeft<300;
+  g.innerHTML='<polyline points="'+pts+'" fill="none" stroke="'+(low?'#C00000':'#C7000B')+'" stroke-width="2"/>'
+    +'<circle cx="'+xOf(S.path.length-1)+'" cy="'+yOf(Math.max(0,S.path[S.path.length-1]))+'" r="3.2" fill="#C7000B"/>';
+  $('today').innerHTML='<line x1="'+xOf(S.day)+'" y1="'+CH.pt+'" x2="'+xOf(S.day)+'" y2="'+(CH.h-CH.pb)+'" stroke="#c9ccd2" stroke-dasharray="2,3"/>';
+}
+
+/* ================= M4 解冻 ================= */
+function openM4(gap){
+  $('st4').classList.add('cur');
+  var need=Math.min(S.bufferLeft,Math.ceil((gap+200)/10)*10);
+  $('m4-amt').textContent=fmt(need);
+  $('m4-ttl').textContent='⚠ 紧绷日预警 · 第 '+S.cycle+' 周期第 '+S.day+' 天';
+  $('m4-warn').textContent='按当前开销推算，本期剩余 ¥'+fmt(gap+Math.max(0,S.flexLeft))+
+    ' 的支出将超过灵活池余额 ¥'+fmt(Math.max(0,S.flexLeft))+'，缺口约 ¥'+fmt(gap)+'。三个知情选项，由你决定：';
+  /* 真实回放模式：流水已发生，"压缩预算"不适用，只保留动用缓冲/继续观察 */
+  $('m4-opt2').style.display=(S.mode==='real')?'none':'';
+  if(S.mode==='real') $('m4-warn').textContent='按本期至今的实际开销外推，本期剩余支出预计超过灵活池余额，缺口约 ¥'
+    +fmt(gap)+'。（回放模式：流水为 U0061 真实合成数据）两个知情选项，由你决定：';
+  $('m4-mask').classList.add('show');
+  $('caption').innerHTML='<b>第 3 步 · M4 紧绷日预警</b>　系统推算出本期缺口，在三个知情选项里做一次决定——这是本产品的核心交互。';
+  toast('紧绷日预警：系统检测到本期现金流缺口','');
+}
+function m4Choose(opt){
+  $('m4-mask').classList.remove('show');
+  $('st4').classList.remove('cur'); $('st2').classList.add('cur');
+  if(opt===1){
+    var gap;
+    if(S.mode==='real'){
+      var avg=S.spent/(S.day+1);
+      gap=Math.max(0,avg*(S.daysInCycle-1-S.day)-S.flexLeft);
+    }else{
+      gap=0; for(var j=S.day+1;j<S.daysInCycle;j++) gap+=S.daily[j];
+      gap=Math.max(0,gap-S.flexLeft);
+    }
+    var t=Math.min(S.bufferLeft,Math.ceil((gap+200)/10)*10);
+    S.bufferLeft-=t; S.flexLeft+=t; S.transfer=t; S.unfroze=true;
+    log('pos','动用缓冲池 +¥'+fmt(t)+' → 灵活池');
+    toast('校准信号已生成：本周期判定"预测偏紧"，将参与下周期分账校准', true);
+  }else if(opt===2){
+    for(var k=S.day+1;k<S.daysInCycle;k++) S.daily[k]=Math.round(S.daily[k]*0.75*10)/10;
+    S.squeezed=true;
+    log('fix','你选择压缩后续预算：剩余天数日均预算下调 25%');
+    toast('已压缩后续预算，缓冲池未动用');
+  }else{
+    log('fix','你选择继续观察，系统将持续监测透支风险');
+  }
+  S.m4Done=true; renderChips();
+  $('caption').innerHTML=CAPTIONS['scr-m2'];
+  startSim(); /* 继续 */
+}
+
+/* ================= M3 复盘 ================= */
+function endCycle(){
+  stopSim(); S.running=false;
+  var signal=S.unfroze||S.broken;
+  /* 校准（与仿真项目 params.json 一致）：动用→偏紧，按步长上调；未动用→下调（速度 0.3，宁紧勿松）；η 每周期 ×0.9 */
+  var oldRatio=S.ratio;
+  if(signal) S.ratio=Math.min(0.30,S.ratio*(1+S.eta));
+  else       S.ratio=Math.max(0.08,S.ratio*(1-S.eta*0.3));
+  var mape=MAPE[S.cycle-1];
+  S.history.push({cycle:S.cycle,signal:signal,unfroze:S.unfroze,broken:S.broken,
+    transfer:S.transfer,squeezed:S.squeezed,spent:S.spent,endBal:S.balance,
+    rigidPaid:S.rigidPaid,
+    flexEnd:S.flexLeft,bufEnd:S.bufferLeft,mape:mape,etaUsed:S.eta,
+    ratioFrom:oldRatio,ratioTo:S.ratio});
+  S.eta*=0.9;
+  renderReview();
+  showScreen('scr-m3');
+  $('m3-btn').textContent=S.cycle<4?'进入第 '+(S.cycle+1)+' 周期 →':'查看四周期总结 →';
+  updatePanel();
+  toast('校准完成：缓冲比例 '+pct(oldRatio)+' → '+pct(S.ratio), true);
+}
+function pct(r){return (r*100).toFixed(1)+'%';}
+function renderReview(){
+  var h=S.history[S.history.length-1], c=h.cycle;
+  $('m3-ttl').textContent='第 '+c+' 周期复盘';
+  var p1, p2;
+  if(S.mode==='real'){
+    p1='本期收入 <b>¥'+fmt(S.income)+'</b>（1 笔工资），固定支出 <b>¥'+fmt(h.rigidPaid||S.rigid)+'</b>'
+      +'（房租/信用还款），期末账户余额 <b>¥'+fmt(h.endBal)+'</b>。';
+    var mx=S.realMax||{day:0,amt:0,large:0};
+    p2='灵活支出合计 <b>¥'+fmt(h.spent)+'</b>（日均 ¥'+fmt(h.spent/S.daysInCycle)+'）。'
+      +(mx.large>0
+        ?('其中计划外大额支出 <b>¥'+fmt(mx.large)+'</b>（第 '+mx.day+' 天），是本期最大单项波动。')
+        :('最大单日支出 ¥'+fmt(mx.amt)+'（第 '+mx.day+' 天），无计划外大额支出。'))
+      +(h.squeezed?'你在紧绷日选择压缩后续预算。':'');
+  }else{
+    var sp=effSurprise();
+    var names=(S.mode==='custom'&&S.fixed)
+      ? S.fixed.map(function(f){return f.name;}).join(' / ')
+      : '房租/车贷/订阅/通勤';
+    p1='本期收入 <b>¥'+fmt(S.income)+'</b>（1 笔工资），固定支出 <b>¥'+fmt(h.rigidPaid||S.rigid)+'</b>（'+names+'），'
+      +'期末账户余额 <b>¥'+fmt(h.endBal)+'</b>。';
+    p2='灵活支出合计 <b>¥'+fmt(h.spent)+'</b>（日均 ¥'+fmt(h.spent/S.daysInCycle)+'）。'
+      +(sp?'其中计划外支出 <b>'+sp.label+' ¥'+fmt(sp.amt)+'</b>，是本期最大单项波动。':'本期无计划外大额支出，开销结构平稳。')
+      +(h.squeezed?'你在紧绷日选择压缩后续预算，剩余天数日均预算下调 25%。':'');
+  }
+  var p3=h.unfroze
+    ?('缓冲池动用 <b>¥'+fmt(h.transfer)+'</b> 用于应急，期末剩余 ¥'+fmt(h.bufEnd)+'。'
+      +(h.broken?'即便如此，灵活池仍一度<b>透支 ¥'+fmt(-h.flexEnd)+'</b>（断档）——本期开销持续超过收入，校准层将在后续周期继续上调缓冲建议。':''))
+    :(h.broken
+      ?('未主动动用缓冲，但灵活池一度<b>透支 ¥'+fmt(-h.flexEnd)+'</b>（断档），实际仍被动占用缓冲资金。')
+      :('缓冲池<b>未动用</b>，期末完整保留 ¥'+fmt(h.bufEnd)+'。'));
+  var p4='<b>校准结果</b>：本期信号＝'+(h.signal?'动用（判定预测偏紧）':'未动用（判定预测偏松/准确）')
+    +'；支出估计按步长 η='+h.etaUsed.toFixed(3)+' '+(h.signal?'上调':'小幅下调')
+    +'，下周期缓冲比例 <b>'+pct(h.ratioFrom)+' → '+pct(h.ratioTo)+'</b>。'
+    +'本期余额预测 MAPE（合成数据回放）<b>'+h.mape.toFixed(1)+'%</b>。';
+  $('review-body').innerHTML='<p>① '+p1+'</p><p>② '+p2+'</p><p>③ '+p3+'</p><p>④ '+p4+'</p>'
+    +'<div class="src">复盘由模板生成，数值来自本周期流水的描述性统计；MAPE 为合成数据回放口径，非精度承诺。</div>';
+}
+function nextCycle(){
+  if(S.cycle<4){ S.cycle++; enterCycle(); }
+  else{ showScreen('scr-final'); renderFinal(); }
+}
+
+/* ================= 总结 ================= */
+function renderFinal(){
+  var h=S.history, used=0,i;
+  for(i=0;i<h.length;i++) if(h[i].signal) used++;
+  $('final-mape').textContent=h.length
+    ? MAPE[0].toFixed(1)+'% → '+MAPE[h.length-1].toFixed(1)+'%（已跑 '+h.length+' 期）'
+    : '—';
+  $('final-kpi').innerHTML=
+    '<div class="k"><b>'+h.length+'</b><span>已模拟周期</span></div>'
+   +'<div class="k"><b>'+used+'</b><span>动用缓冲次数</span></div>'
+   +'<div class="k"><b>'+pct(S.ratio)+'</b><span>校准后缓冲比例</span></div>'
+   +'<div class="k"><b>¥'+fmt(h.length?h[h.length-1].endBal:0)+'</b><span>最近期末余额</span></div>';
+  var rows='';
+  for(i=0;i<h.length;i++){ var r=h[i];
+    rows+='<p><b>第 '+r.cycle+' 周期</b>：'+(r.signal?'动用缓冲（偏紧信号）':'未动用')
+      +'，MAPE '+r.mape.toFixed(1)+'%，缓冲比例 '+pct(r.ratioFrom)+' → '+pct(r.ratioTo)+'。</p>'; }
+  if(h.length<4) rows+='<p style="color:#9aa0a8">（未跑完的周期按未发生计；完整四周期可重新体验。）</p>';
+  $('final-body').innerHTML=rows
+    +'<p><b>一句话</b>：每一次"动用缓冲"都不是麻烦，而是一次免费的标注——系统据此把下周期的预测调得更贴合你。这就是"解冻即校准"。</p>'
+    +'<div class="src">全部数据为本机生成的演示数据；MAPE 为合成数据回放口径，验证收敛方向，非精度承诺。</div>';
+}
+function restartAll(){ setMode(S.mode); $('evtlog').innerHTML=''; drawMape(); renderSigDots(); updatePanel(); showScreen('scr-home'); }
+
+/* ================= 评委看板 ================= */
+function updatePanel(){
+  $('kv-cycle').textContent=S.cycle+' / 4';
+  $('kv-ratio').textContent=(S.ratio*100).toFixed(1)+'%';
+  $('kv-eta').textContent=S.eta.toFixed(3);
+  $('kv-sig').textContent=S.unfroze?'已动用缓冲':(S.broken?'断档（被动占用）':'—');
+  $('pool-ttl').textContent='三池实时状态（占月薪 ¥'+fmt(S.income)+'）';
+  /* 三池条 */
+  var b=S.bufferLeft,f=Math.max(0,S.flexLeft),tot=S.income;
+  $('bar-r').style.width=(S.rigid/tot*100)+'%'; $('bar-r-v').textContent=fmt(S.rigid);
+  $('bar-b').style.width=(b/tot*100)+'%';     $('bar-b-v').textContent=fmt(b);
+  $('bar-f').style.width=(f/tot*100)+'%';     $('bar-f-v').textContent=fmt(f);
+  renderSigDots(); drawMape();
+}
+function renderSigDots(){
+  var el=$('sig-dots'), s='';
+  for(var c=1;c<=4;c++){
+    var rec=null;
+    for(var i=0;i<S.history.length;i++) if(S.history[i].cycle===c) rec=S.history[i];
+    var cls=rec?(rec.signal?'s1':'s0'):'';
+    var lab=rec?(rec.signal?'动用':'未动用'):'待定';
+    s+='<span class="sd"><span class="sdot '+cls+'"></span>第'+c+'期<br>'+lab+'</span>';
+  }
+  el.innerHTML=s+'<span style="font-size:10px;color:#9aa0a8;margin-left:auto;line-height:1.5">红＝偏紧信号<br>绿＝未动用</span>';
+}
+function drawMape(){
+  var svg=$('mape-chart'), w=316,h=150,pl=30,pr=12,pt=10,pb=24;
+  /* Y 轴上限自适应：取数据最大值上取整到 5 的倍数，下限 35。
+     这样替换成真实收敛数据（首值可达 40%+）时曲线不会溢出画布。 */
+  var i,mx=0;
+  for(i=0;i<MAPE.length;i++) if(MAPE[i]>mx) mx=MAPE[i];
+  for(i=0;i<S.history.length;i++) if(S.history[i].mape>mx) mx=S.history[i].mape;
+  var YMAX=Math.max(35,Math.ceil((mx+2)/5)*5);
+  function X(i){return pl+(w-pl-pr)*i/3;}
+  function Y(v){return pt+(h-pt-pb)*(1-v/YMAX);}
+  var s='<rect width="'+w+'" height="'+h+'" fill="#fff"/>';
+  for(var g=0;g<=YMAX;g+=10){
+    s+='<line x1="'+pl+'" y1="'+Y(g)+'" x2="'+(w-pr)+'" y2="'+Y(g)+'" stroke="#eef0f3"/>';
+    s+='<text x="'+(pl-4)+'" y="'+(Y(g)+3)+'" font-size="8.5" fill="#9aa0a8" text-anchor="end">'+g+'%</text>';}
+  for(var t=0;t<4;t++) s+='<text x="'+X(t)+'" y="'+(h-8)+'" font-size="8.5" fill="#9aa0a8" text-anchor="middle">第'+(t+1)+'期</text>';
+  var n=S.history.length, pts='';
+  for(i=0;i<n;i++) pts+=X(i)+','+Y(S.history[i].mape)+' ';
+  if(n>=2) s+='<polyline points="'+pts+'" fill="none" stroke="#C7000B" stroke-width="2"/>';
+  for(i=0;i<n;i++){
+    s+='<circle cx="'+X(i)+'" cy="'+Y(S.history[i].mape)+'" r="3.4" fill="#C7000B"/>';
+    s+='<text x="'+X(i)+'" y="'+(Y(S.history[i].mape)-7)+'" font-size="9" fill="#C7000B" text-anchor="middle" font-weight="700">'+S.history[i].mape.toFixed(1)+'%</text>';}
+  for(i=n;i<4;i++) s+='<circle cx="'+X(i)+'" cy="'+Y(MAPE[i])+'" r="3" fill="#fff" stroke="#c9ccd2" stroke-dasharray="2,2"/>';
+  if(n===1) s+='<text x="'+((pl+w-pr)/2)+'" y="'+(Y(YMAX*0.43))+'" font-size="9.5" fill="#9aa0a8" text-anchor="middle">第 2 期起，解冻信号参与校准 ↓</text>';
+  svg.innerHTML=s;
+}
+
+/* ================= 护栏层体验 ================= */
+var GUARD_WORDS=['稳赚','保本','一定能','稳赢','收益承诺','风险淡化','诱导交易','绝对收益','零风险','保证收益']; /* 与仿真项目 params.json model.guard.blacklist 一致 */
+function guardCheck(){
+  var t=$('guard-input').value.trim(), r=$('guard-result');
+  if(!t){ r.className='g-result block'; r.textContent='请先输入一句待检测的文案。'; return; }
+  var hits=GUARD_WORDS.filter(function(w){ return t.indexOf(w)>=0; });
+  if(hits.length){
+    r.className='g-result block';
+    r.innerHTML='⛔ <b>拦截</b>：命中违规表述「'+hits.join('」「')+'」。该文案不会触达用户，将退回改写。';
+  }else{
+    r.className='g-result pass';
+    r.innerHTML='✅ <b>通过</b>：未命中黑名单（共 '+GUARD_WORDS.length+' 类违规表述），允许推送。';
+  }
+}
+/* 预设文案：点一下自动填入并立即检测（后端同学体验版接口的设计，这里直接吸收） */
+function guardPreset(btn){
+  $('guard-input').value=btn.textContent;
+  guardCheck();
+}
+
+/* ================= 初始化 ================= */
+setMode('story');
+</script>
+
+<script>
+/* ===== 自检：确认交互真的可用，否则把具体病因写在页面顶部 ===== */
+(function(){
+  var warn=document.getElementById('jswarn');
+  function show(html){ if(warn){ warn.style.display='block'; warn.innerHTML=html; } }
+  var HEAD='<b>⚠ 页面交互未能启用</b>　';
+  var FOOT='<br><span style="color:#6b7280">请改用 Chrome / Edge 浏览器重新打开本文件。</span>';
+
+  /* 1) 主脚本是否执行（函数未定义 = 脚本整段没跑） */
+  if(typeof window.enterCycle!=='function'||typeof window.guardCheck!=='function'){
+    show(HEAD+'页面脚本没有运行。最常见的原因是<b>文件被 WPS / Word / 记事本 打开</b>（右键 →「打开方式」→ 选 Chrome / Edge），'
+        +'其次是浏览器处于<b>兼容模式</b>（360 / QQ 浏览器请切"极速模式"）或<b>禁用了 JavaScript</b>。'+FOOT);
+    return;
+  }
+  /* 2) 内联点击事件是否被浏览器安全策略屏蔽 */
+  var btn=document.getElementById('start-btn');
+  if(btn && !btn.onclick){
+    show(HEAD+'脚本运行正常，但浏览器<b>屏蔽了页面的内联点击事件</b>（多为安全软件或隐私类插件所致）。'
+        +'请临时停用插件后用无痕窗口打开，或直接换 Chrome / Edge。'+FOOT);
+    return;
+  }
+  /* 3) 是否有浮层挡住按钮 */
+  if(btn){
+    var r=btn.getBoundingClientRect();
+    var cx=r.left+r.width/2, cy=r.top+r.height/2;
+    var inView=(cy>0&&cy<window.innerHeight&&cx>0&&cx<window.innerWidth);
+    if(inView){
+      var hit=document.elementFromPoint(cx,cy);
+      if(hit&&hit!==btn&&!btn.contains(hit)){
+        show(HEAD+'有浮层挡住了按钮（实际命中的是 '+(hit.className||hit.tagName)+'），请刷新页面重试。'+FOOT);
+        return;
+      }
+    }
+  }
+  /* 一切正常：立即收起提示条（同一帧内完成，用户不会看到闪烁） */
+  document.documentElement.className='js-ok';
+})();
+</script>
+</body>
+</html>
